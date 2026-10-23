@@ -192,7 +192,7 @@ class MainActivity : Activity() {
         clock = tv(if (portrait) 64f else 92f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
         val nextCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            background = if (glassOn) (if (Config.hasImage(this)) Config.glass(density, 24, null, true) else Config.glass(density, 24, highlightColor))
+            background = if (glassOn) (if (Config.hasImage(this@MainActivity)) Config.glass(density, 24, null, true) else Config.glass(density, 24, highlightColor))
                 else GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(24).toFloat() }
             setPadding(dp(24), dp(14), dp(24), dp(16))
         }
