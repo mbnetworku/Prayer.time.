@@ -7,6 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.graphics.Typeface
@@ -41,6 +44,8 @@ class MainActivity : Activity() {
     private val textColor get() = prefs.getInt("textColor", Config.defText)
     private val highlightColor get() = prefs.getInt("hlColor", Config.defHighlight)
     private val bgColor get() = prefs.getInt("bgColor", Color.BLACK)
+    private val glassOn get() = prefs.getBoolean("glass", true)
+    private val density get() = resources.displayMetrics.density
     private val dimPercent get() = prefs.getInt("dim", 0)
     private val names = listOf("الفجر", "الشروق", "الظهر", "الجمعة", "العصر", "المغرب", "العشاء")
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
@@ -118,7 +123,10 @@ class MainActivity : Activity() {
             setPadding(48, 24, 48, 24)
         }
         // Right side (first child in RTL): prayer table.
-        val table = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val table = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            if (glassOn) { background = Config.glass(density, 28); setPadding(dp(16), dp(12), dp(16), dp(12)) }
+        }
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         for ((t, w) in listOf("الصلاة" to 1.2f, "الأذان" to 1f)) {
             head.addView(tv(16f).apply { text = t; alpha = 0.7f }, LinearLayout.LayoutParams(0, -2, w))
@@ -136,16 +144,19 @@ class MainActivity : Activity() {
             nameViews += n; timeViews += t; rows += row
             table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f))
         }
-        root.addView(table, LinearLayout.LayoutParams(0, -1, 1f))
+        root.addView(table, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(8), dp(8), dp(8), dp(8)) })
 
         // Left side: title, dates, clock, countdown, verse.
-        info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        info = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            if (glassOn) { background = Config.glass(density, 28); setPadding(dp(16), dp(12), dp(16), dp(12)) }
+        }
         title = tv(34f, true); hijri = tv(26f); greg = tv(22f)
         clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         countdown = tv(26f)
         verse = tv(28f).apply {
             setPadding(dp(24), dp(14), dp(24), dp(14))
-            background = GradientDrawable().apply {
+            background = if (glassOn) Config.glass(density, 20) else GradientDrawable().apply {
                 cornerRadius = dp(16).toFloat(); setColor(Color.argb(50, 255, 255, 255)); setStroke(dp(1), textColor)
             }
         }
@@ -153,15 +164,19 @@ class MainActivity : Activity() {
         for (v in listOf(title, hijri, greg, clock, countdown, verse, hint)) {
             info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
         }
-        root.addView(info, LinearLayout.LayoutParams(0, -1, 1.2f))
+        root.addView(info, LinearLayout.LayoutParams(0, -1, 1.2f).apply { setMargins(dp(8), dp(8), dp(8), dp(8)) })
         updateTile()
 
         // Layers: background colour, wallpaper, dim overlay, content, settings button.
         val frame = FrameLayout(this).apply {
-            setBackgroundColor(bgColor); layoutDirection = View.LAYOUT_DIRECTION_LTR
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            if (glassOn && !prefs.contains("bgColor")) background = Config.glassBackground() else setBackgroundColor(bgColor)
         }
         val wall = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
         loadWallpaper(wall)
+        // Frosted look: blur the wallpaper behind the glass panels (Android 12+).
+        if (glassOn && prefs.getBoolean("blurWall", true) && Build.VERSION.SDK_INT >= 31)
+            wall.setRenderEffect(RenderEffect.createBlurEffect(dp(18).toFloat(), dp(18).toFloat(), Shader.TileMode.CLAMP))
         frame.addView(wall, FrameLayout.LayoutParams(-1, -1))
         frame.addView(View(this).apply { setBackgroundColor(Color.argb(dimPercent * 255 / 100, 0, 0, 0)) },
             FrameLayout.LayoutParams(-1, -1))
@@ -169,7 +184,7 @@ class MainActivity : Activity() {
         val gear = TextView(this).apply {
             text = "الإعدادات"; textSize = 16f; setTextColor(textColor)
             setPadding(dp(18), dp(8), dp(18), dp(8))
-            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.argb(110, 0, 0, 0)); setStroke(dp(1), textColor) }
+            background = if (glassOn) Config.glass(density, 22) else GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.argb(110, 0, 0, 0)); setStroke(dp(1), textColor) }
             isClickable = true; isFocusable = true
             setOnClickListener { openSettings() }
         }
@@ -257,8 +272,11 @@ class MainActivity : Activity() {
                 countdown.text = String.format(Locale.US, "المتبقي لـ%s  %d:%02d:%02d",
                     names2[next], s / 3600, s % 3600 / 60, s % 60)
             }
-            for (i in rows.indices) rows[i].setBackgroundColor(
-                if (i == next) highlightColor else Color.TRANSPARENT)
+            for (i in rows.indices) rows[i].background = when {
+                i != next -> null
+                glassOn -> Config.glass(density, 16, highlightColor)
+                else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(12).toFloat() }
+            }
 
             // Fire adhan (not for sunrise) within 30s after the exact time.
             for (i in today.indices) {

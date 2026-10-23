@@ -2,6 +2,7 @@ package com.prayertime.tv
 
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import org.json.JSONArray
 
 /** Shared by the main screen and the settings screen. */
@@ -36,4 +37,20 @@ object Config {
     fun saveTiles(p: SharedPreferences, list: List<String>) {
         p.edit().putString("tiles", JSONArray(list).toString()).apply()
     }
+
+    // ---- Liquid glass style (pref "glass", default on) ----------------------------------
+
+    /** Frosted glass panel: translucent white (or tinted) gradient, soft light edge, rounded corners. */
+    fun glass(density: Float, radiusDp: Int, tint: Int? = null): GradientDrawable {
+        val top = if (tint != null) Color.argb(170, Color.red(tint), Color.green(tint), Color.blue(tint)) else Color.argb(64, 255, 255, 255)
+        val bottom = if (tint != null) Color.argb(110, Color.red(tint), Color.green(tint), Color.blue(tint)) else Color.argb(22, 255, 255, 255)
+        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply {
+            cornerRadius = radiusDp * density
+            setStroke(density.toInt().coerceAtLeast(1), Color.argb(110, 255, 255, 255))
+        }
+    }
+
+    /** Deep colourful backdrop that makes the glass visible when no wallpaper is chosen. */
+    fun glassBackground() = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
+        Color.parseColor("#0F2A5C"), Color.parseColor("#3A1C71"), Color.parseColor("#0E5E6F")))
 }

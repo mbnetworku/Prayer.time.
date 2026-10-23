@@ -13,3 +13,4 @@
 - SettingsActivity pages: `pageGeneral`, `pageAdhan`, `pageAppearance`, `pageLanguage`; selected tab saved in pref `settingsTab`.
 - Live tile: `MainActivity.updateTile()` - prefs `tilesBuiltin`, `tileAfterAdhan`, `tileSeconds`, `tiles` (JSON array via `Config.customTiles/saveTiles`). Text size: pref `fontScale` (percent) applied in `MainActivity.tv()`.
 - Manual time corrections: prefs `adj_0`..`adj_5` (minutes; Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha) added in `MainActivity.load()`; Jumuah copies the adjusted Dhuhr.
+- Liquid glass: `Config.glass()` (translucent gradient + light stroke) and `Config.glassBackground()`; prefs `glass` (default true) and `blurWall` (RenderEffect blur, API 31+). If the user set a background colour, it is used instead of the glass gradient.

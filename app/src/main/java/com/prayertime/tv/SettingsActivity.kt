@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -53,6 +54,19 @@ class SettingsActivity : Activity() {
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
     private fun edit(f: SharedPreferences.Editor.() -> Unit) { prefs.edit().apply(f).apply() }
 
+    private val glassOn get() = prefs.getBoolean("glass", true)
+    private val density get() = resources.displayMetrics.density
+
+    /** Card / panel background: glass or flat. */
+    private fun panel() = if (glassOn) Config.glass(density, 14) else round(cardBg)
+
+    /** Chip / button background; selected = accent tinted. */
+    private fun chip(selected: Boolean) = when {
+        glassOn -> Config.glass(density, 14, if (selected) Color.parseColor("#2A5FA8") else null)
+        selected -> round(Color.parseColor("#2A5FA8"))
+        else -> round(Color.parseColor("#232A35"))
+    }
+
     private fun round(c: Int) = GradientDrawable().apply { setColor(c); cornerRadius = dp(10).toFloat() }
 
     private fun text(s: String, size: Float, bold: Boolean = false, c: Int = Color.WHITE) = TextView(this).apply {
@@ -63,7 +77,7 @@ class SettingsActivity : Activity() {
     private fun button(label: String, onClick: () -> Unit) = TextView(this).apply {
         text = label; textSize = 17f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
         setPadding(dp(20), dp(10), dp(20), dp(10))
-        background = round(Color.parseColor("#2A5FA8"))
+        background = chip(true)
         isClickable = true; isFocusable = true
         setOnClickListener { onClick() }
     }
@@ -76,7 +90,7 @@ class SettingsActivity : Activity() {
     private fun row(body: LinearLayout, label: String, control: View) {
         val r = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(cardBg)
+            setPadding(dp(16), dp(8), dp(16), dp(8)); background = panel()
         }
         r.addView(text(label, 18f), LinearLayout.LayoutParams(0, -2, 1f))
         r.addView(control)
@@ -94,7 +108,7 @@ class SettingsActivity : Activity() {
         fun paint() {
             val sel = selected()
             views.forEachIndexed { i, v ->
-                v.background = round(if (i == sel) Color.parseColor("#2A5FA8") else Color.parseColor("#232A35"))
+                v.background = chip(i == sel)
             }
         }
         items.chunked(perRow).forEachIndexed { r, chunk ->
@@ -122,18 +136,18 @@ class SettingsActivity : Activity() {
         body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         val head = TextView(this).apply {
             textSize = 17f; setTextColor(Color.WHITE); setPadding(dp(16), dp(12), dp(16), dp(12))
-            background = round(Color.parseColor("#232A35")); isClickable = true; isFocusable = true
+            background = chip(false); isClickable = true; isFocusable = true
         }
         fun refresh() { head.text = items[selected().coerceIn(0, items.size - 1)] + "   ▼" }
         refresh()
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; visibility = View.GONE
-            background = round(cardBg); setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = panel(); setPadding(dp(8), dp(8), dp(8), dp(8))
         }
         val views = ArrayList<TextView>()
         fun paint() {
             val sel = selected()
-            views.forEachIndexed { i, v -> v.background = if (i == sel) round(Color.parseColor("#2A5FA8")) else null }
+            views.forEachIndexed { i, v -> v.background = if (i == sel) chip(true) else null }
         }
         items.forEachIndexed { i, label2 ->
             val v = TextView(this).apply {
@@ -189,12 +203,14 @@ class SettingsActivity : Activity() {
     /** Full fresh screen: header, side menu with categories, and the selected category's page. */
     private fun build(): View {
         val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setBackgroundColor(pageBg)
+            orientation = LinearLayout.VERTICAL
+            background = if (glassOn) Config.glassBackground() else ColorDrawable(pageBg)
             layoutDirection = if (isAr) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(24), dp(12), dp(24), dp(12)); setBackgroundColor(cardBg)
+            setPadding(dp(24), dp(12), dp(24), dp(12))
+            background = if (glassOn) Config.glass(density, 0) else ColorDrawable(cardBg)
         }
         header.addView(button(t("رجوع", "Back")) { finish() })
         header.addView(text(t("الإعدادات", "Settings"), 26f, true).apply { gravity = Gravity.CENTER },
@@ -206,7 +222,8 @@ class SettingsActivity : Activity() {
         page.addView(main, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val menu = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(16), dp(12), dp(16)); setBackgroundColor(cardBg)
+            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(16), dp(12), dp(16))
+            background = if (glassOn) Config.glass(density, 0) else ColorDrawable(cardBg)
         }
         main.addView(menu, LinearLayout.LayoutParams(dp(220), -1))
 
@@ -226,7 +243,7 @@ class SettingsActivity : Activity() {
         val items = ArrayList<TextView>()
         fun show(i: Int) {
             tab = i
-            items.forEachIndexed { k, v -> v.background = round(if (k == i) Color.parseColor("#2A5FA8") else Color.TRANSPARENT) }
+            items.forEachIndexed { k, v -> v.background = if (k == i) chip(true) else null }
             body.removeAllViews(); adhan.stop()
             tabs[i].second(body)
             scroll.scrollTo(0, 0)
@@ -293,7 +310,7 @@ class SettingsActivity : Activity() {
             items.forEachIndexed { i, msg ->
                 val r = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(cardBg)
+                    setPadding(dp(16), dp(8), dp(16), dp(8)); background = panel()
                 }
                 r.addView(text(msg, 17f), LinearLayout.LayoutParams(0, -2, 1f))
                 r.addView(button(t("حذف", "Delete")) {
@@ -360,6 +377,11 @@ class SettingsActivity : Activity() {
 
     private fun pageAppearance(body: LinearLayout) {
         section(body, t("المظهر", "Appearance"))
+        row(body, t("نمط الزجاج السائل", "Liquid glass style"), Switch(this).apply {
+            isChecked = glassOn
+            setOnCheckedChangeListener { _, c -> edit { putBoolean("glass", c) }; recreate() }
+        })
+        row(body, t("تمويه صورة الخلفية (أندرويد 12+)", "Blur wallpaper (Android 12+)"), switchOf("blurWall", true))
         val scales = listOf(80, 90, 100, 110, 125, 150)
         chipGroup(body, t("حجم الخط", "Text size"), scales.map { "$it%" }, 6,
             { scales.indexOf(prefs.getInt("fontScale", 100)).coerceAtLeast(0) }) { pos ->

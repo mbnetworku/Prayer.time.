@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Liquid glass style** (on by default): frosted translucent glass panels with soft light edges for the prayer table, clock panel, message card, settings button and next-prayer highlight, over a deep blue/purple/teal gradient. The settings screen uses the same glass cards, chips and buttons. The wallpaper is blurred behind the glass on Android 12+.
+- Settings > Appearance: switches for **Liquid glass style** and **Blur wallpaper**.
 - New settings page **Adjust times**: move Fajr, Sunrise, Dhuhr (and Jumuah), Asr, Maghrib or Isha earlier/later by -60..+60 minutes with + / − buttons, plus reset. The adhan plays at the adjusted time.
 - Settings > Appearance: **Text size** for the main screen (80 %, 90 %, 100 %, 110 %, 125 %, 150 %).
 - Main screen: the verse line is now a rotating **message card (live tile)**.
