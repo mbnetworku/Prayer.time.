@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- The Jumuah (الجمعة) row is now a separate row after Dhuhr and is shown on Fridays only; Dhuhr always shows.
 - Settings: new **display mode** (full / times only) hides the dates, clock and countdown so only the prayer table shows.
 - Settings: new **adhan choice**. Every `res/raw/adhan.*` and `adhan_2`, `adhan_3`, ... file is listed as "الأذان 1, 2, ..."; picking one previews it.
 - Removed the Iqama (الإقامة) column from the prayer table.

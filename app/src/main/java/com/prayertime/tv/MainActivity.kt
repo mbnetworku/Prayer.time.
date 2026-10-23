@@ -29,7 +29,7 @@ class MainActivity : Activity() {
     private lateinit var adhan: AdhanPlayer
 
     private val blue = Color.parseColor("#8EC5FF")
-    private val names = listOf("الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء")
+    private val names = listOf("الفجر", "الشروق", "الظهر", "الجمعة", "العصر", "المغرب", "العشاء")
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
         "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة")
     private val days = mapOf(1 to "الاثنين", 2 to "الثلاثاء", 3 to "الأربعاء", 4 to "الخميس",
@@ -150,20 +150,23 @@ class MainActivity : Activity() {
             return PrayerCalc.compute(date, r.lat, r.lng, off, r.method)
         }
         val t = calc(d)
-        today = t.asList().map { at(d, it) }
+        val friday = d.dayOfWeek.value == 5
+        // Index 3 is the Jumuah row: same time as Dhuhr, shown on Fridays only.
+        val hours = t.asList().toMutableList().also { it.add(3, it[2]) }
+        today = hours.mapIndexed { i, h -> if (i == 3 && !friday) null else at(d, h) }
         tomorrowFajr = at(d.plusDays(1), calc(d.plusDays(1)).fajr)
         cachedDate = d; cachedRegion = prefs.getInt("region", 0)
 
-        val friday = d.dayOfWeek.value == 5
-        names2 = names.toMutableList().also { if (friday) it[2] = "الجمعة" }
+        names2 = names
         val hd = HijrahDate.from(d.plusDays(hijriAdj.toLong()))
         title.text = "مواقيت الصلاة - " + r.nameAr.substringBefore(" - ")
         hijri.text = "${days[d.dayOfWeek.value]} ${hd.get(ChronoField.DAY_OF_MONTH)} " +
             "${hijriMonths[hd.get(ChronoField.MONTH_OF_YEAR) - 1]} ${hd.get(ChronoField.YEAR)}"
         greg.text = String.format(Locale.US, "%02d/%02d/%d", d.dayOfMonth, d.monthValue, d.year)
+        rows[3].visibility = if (friday) View.VISIBLE else View.GONE
         for (i in names.indices) {
             nameViews[i].text = names2[i]
-            timeViews[i].text = hm(t.asList()[i])
+            timeViews[i].text = hm(hours[i])
         }
     }
     private var names2 = names
@@ -189,7 +192,7 @@ class MainActivity : Activity() {
             // Fire adhan (not for sunrise) within 30s after the exact time.
             for (i in today.indices) {
                 val t = today[i] ?: continue
-                if (i == 1) continue
+                if (i == 1 || i == 3) continue
                 val since = Duration.between(t, now).seconds
                 val key = "${now.toLocalDate()}-$i"
                 if (since in 0..30 && key != lastFired) {
