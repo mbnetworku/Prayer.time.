@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Readability over a photo: panels become dark frosted glass, text gets a soft shadow, the next-prayer card uses dark glass, and past prayers are less faded (70 %).
 - **Prayer list background**: Settings > Appearance > Prayer list background - choose your own picture shown inside the prayer-times panel (rounded, behind the names and times), with picture dimming (0-80 %) and a remove button. Independent of the full-screen wallpaper.
 - With your own wallpaper image, the glass stays clear: the next-prayer card and highlighted row use bright clear glass instead of the blue/purple tint, panels are more transparent, and the settings screen shows your image behind it instead of the purple backdrop.
 - **New liquid glass look**: panels are now drawn by `GlassDrawable` - a mostly clear body, a soft light sheen across the top, an inner glow and a bright rim that catches light at the corners (instead of flat translucent boxes). The backdrop is a deep gradient with soft blue, purple and teal glows behind the glass. Applies to the home screen, settings and highlights.

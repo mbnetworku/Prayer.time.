@@ -46,8 +46,8 @@ object Config {
     // ---- Liquid glass style (pref "glass", default on) ----------------------------------
 
     /** Liquid glass panel (see GlassDrawable): clear body, top sheen, light-catching rim. strong = brighter clear glass. */
-    fun glass(density: Float, radiusDp: Int, tint: Int? = null, strong: Boolean = false): android.graphics.drawable.Drawable =
-        GlassDrawable(density, radiusDp, tint, strong)
+    fun glass(density: Float, radiusDp: Int, tint: Int? = null, strong: Boolean = false, dark: Boolean = false): android.graphics.drawable.Drawable =
+        GlassDrawable(density, radiusDp, tint, strong, dark)
 
     /** True when the user picked their own wallpaper image: glass then stays clear (no colour tint). */
     fun hasImage(ctx: Context) = (ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)

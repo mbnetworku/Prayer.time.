@@ -127,6 +127,8 @@ class MainActivity : Activity() {
     private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
         setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f * screenScale; gravity = Gravity.CENTER
         if (bold) setTypeface(typeface, Typeface.BOLD)
+        // Soft shadow keeps text readable over a photo.
+        if (Config.hasImage(this@MainActivity) || prefs.contains("listImage")) setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), Color.argb(200, 0, 0, 0))
     }
 
     private lateinit var nextName: TextView
@@ -134,7 +136,8 @@ class MainActivity : Activity() {
     private lateinit var progFill: View
     private lateinit var progRest: View
 
-    private fun card(radius: Int = 26) = if (glassOn) Config.glass(density, radius)
+    // Over a photo the glass is dark-frosted so text stays readable.
+    private fun card(radius: Int = 26) = if (glassOn) Config.glass(density, radius, dark = Config.hasImage(this))
         else GradientDrawable().apply { setColor(Color.argb(60, 255, 255, 255)); cornerRadius = dp(radius).toFloat() }
 
     /** Home screen: top bar (city, dates, settings) + hero (clock, next-prayer card, message) + prayer list. */
@@ -192,7 +195,7 @@ class MainActivity : Activity() {
         clock = tv(if (portrait) 64f else 92f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
         val nextCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            background = if (glassOn) (if (Config.hasImage(this@MainActivity)) Config.glass(density, 24, null, true) else Config.glass(density, 24, highlightColor))
+            background = if (glassOn) (if (Config.hasImage(this@MainActivity)) Config.glass(density, 24, dark = true) else Config.glass(density, 24, highlightColor))
                 else GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(24).toFloat() }
             setPadding(dp(24), dp(14), dp(24), dp(16))
         }
@@ -355,7 +358,7 @@ class MainActivity : Activity() {
                     glassOn -> if (Config.hasImage(this@MainActivity)) Config.glass(density, 18, null, true) else Config.glass(density, 18, highlightColor)
                     else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(18).toFloat() }
                 }
-                rows[i].alpha = if (passed && i != next) 0.45f else 1f
+                rows[i].alpha = if (passed && i != next) 0.7f else 1f
             }
 
             // Fire adhan (not for sunrise) within 30s after the exact time.

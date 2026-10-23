@@ -17,7 +17,8 @@ import android.graphics.drawable.Drawable
  * and a bright rim that catches light at the top-left and bottom-right corners.
  */
 class GlassDrawable(private val density: Float, private val radiusDp: Int, private val tint: Int? = null,
-                    private val strong: Boolean = false) : Drawable() {
+                    private val strong: Boolean = false,
+                    private val dark: Boolean = false) : Drawable() {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val sheen = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -40,6 +41,7 @@ class GlassDrawable(private val density: Float, private val radiusDp: Int, priva
         // Body: very light, slightly brighter at the top.
         fill.shader = if (tint != null)
             LinearGradient(x, y, x, y + h, tinted(150), tinted(90), Shader.TileMode.CLAMP)
+        else if (dark) LinearGradient(x, y, x, y + h, Color.argb(150, 8, 10, 16), Color.argb(115, 8, 10, 16), Shader.TileMode.CLAMP)
         else if (strong) LinearGradient(x, y, x, y + h, white(72), white(30), Shader.TileMode.CLAMP)
         else LinearGradient(x, y, x, y + h, white(30), white(8), Shader.TileMode.CLAMP)
         // Top sheen: soft reflection fading out by the middle.
