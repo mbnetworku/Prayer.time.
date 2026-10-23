@@ -11,8 +11,10 @@ android {
         applicationId = "com.prayertime.tv"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // CI passes the GitHub run number so every build has a higher version and installs as an update.
+        val build = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "1.$build"
     }
 
     // Fixed key so every build has the same signature (updates install over older builds).

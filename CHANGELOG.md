@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- versionCode/versionName now follow the GitHub build number, so each new build installs as an update over the previous one (same signing key since Build 8).
 - Builds are now signed with one fixed key (`app/prayer-debug.jks`) so a new APK installs over the previous one. Uninstall the old app once before installing this build.
 - docs/INSTALL.md: how to handle the Google Play Protect warning.
 - The Jumuah (الجمعة) row is now a separate row after Dhuhr and is shown on Fridays only; Dhuhr always shows.
