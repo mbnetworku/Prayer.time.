@@ -372,7 +372,7 @@ class MainActivity : Activity() {
                 val since = Duration.between(t, now).seconds
                 // Same key as the background alarm (index without the Jumuah row) so it plays once.
                 val key = "${now.toLocalDate()}-${if (i > 3) i - 1 else i}"
-                if (since in 0..30 && Times.claim(this, key) && soundOn) playAzan()
+                if (since in 0..30 && Times.claim(this@MainActivity, key) && soundOn) playAzan()
             }
             tick++
             updateTile()
