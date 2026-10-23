@@ -15,6 +15,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
@@ -55,6 +56,11 @@ class SettingsActivity : Activity() {
         adhan = AdhanPlayer.get(this)
         Config.applyOrientation(this)
         setContentView(build())
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AdhanScheduler.schedule(this) // region / adjustments may have changed
     }
 
     override fun onResume() {
@@ -424,8 +430,22 @@ class SettingsActivity : Activity() {
 
     private fun pageAdhan(body: LinearLayout) {
         group(body, t("التشغيل", "Playback"))
-        row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true),
+        row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true) { AdhanScheduler.schedule(this) },
             t("عند دخول وقت كل صلاة", "At each prayer time"))
+        row(body, t("الأذان والتطبيق مغلق", "Adhan when the app is closed"),
+            switchOf("bgAdhan", true) { AdhanScheduler.schedule(this) },
+            t("يعمل في الخلفية وحتى مع إطفاء الشاشة", "Runs in the background, even with the screen off"))
+        if (!AdhanScheduler.exactAllowed(this) && Build.VERSION.SDK_INT >= 31) {
+            action(body, t("السماح بالمنبهات الدقيقة (مطلوب للأذان في وقته)", "Allow exact alarms (needed for an on-time adhan)"), red) {
+                try { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:$packageName"))) }
+                catch (_: Exception) { }
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 23 && !Config.isTv(this)) {
+            action(body, t("إعدادات توفير البطارية (اختر: بدون قيود)", "Battery optimization settings (choose: not optimized)")) {
+                try { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } catch (_: Exception) { }
+            }
+        }
         val lengths = listOf(10, 30, 60, 120, 0)
         choices(body, t("مدة الأذان", "Adhan length"),
             listOf(t("10 ثوانٍ", "10 sec"), t("30 ثانية", "30 sec"), t("دقيقة", "1 min"),

@@ -8,6 +8,7 @@ import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 
 /**
@@ -30,6 +31,9 @@ class AdhanPlayer private constructor(private val ctx: Context) {
     private var limitEnd = 0L   // elapsedRealtime when the length limit stops the adhan (0 = no limit)
     private var limitLeft = 0L  // remaining limit while paused
 
+    /** Called once when the adhan stops (used by the background service). */
+    var onStop: (() -> Unit)? = null
+
     val isPlaying get() = playing
     var isPaused = false
         private set
@@ -46,6 +50,7 @@ class AdhanPlayer private constructor(private val ctx: Context) {
             try {
                 player = MediaPlayer.create(ctx, id)?.apply {
                     setAudioAttributes(attributes())
+                    try { setWakeMode(ctx, PowerManager.PARTIAL_WAKE_LOCK) } catch (_: Exception) { }
                     setOnCompletionListener { stop() }
                     start()
                 }
@@ -71,6 +76,7 @@ class AdhanPlayer private constructor(private val ctx: Context) {
         try {
             player = MediaPlayer().apply {
                 setAudioAttributes(attributes())
+                setWakeMode(ctx, PowerManager.PARTIAL_WAKE_LOCK)
                 setDataSource(ctx, uri)
                 setOnCompletionListener { stop() }
                 prepare()
@@ -124,7 +130,7 @@ class AdhanPlayer private constructor(private val ctx: Context) {
         for (i in 0 until 4) {
             handler.postDelayed({ tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 600) }, i * 1200L)
         }
-        handler.postDelayed({ tone.release(); playing = false }, 6000L)
+        handler.postDelayed({ tone.release(); stop() }, 6000L)
     }
 
     fun stop() {
@@ -135,5 +141,6 @@ class AdhanPlayer private constructor(private val ctx: Context) {
         player?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
         player = null
         AdhanNotification.cancel(ctx)
+        onStop?.let { onStop = null; it() }
     }
 }

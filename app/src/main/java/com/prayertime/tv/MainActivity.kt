@@ -74,7 +74,6 @@ class MainActivity : Activity() {
         "سبحان الله وبحمده، سبحان الله العظيم")
     private val afterAdhanDua = "اللهم رب هذه الدعوة التامة والصلاة القائمة، آت محمداً الوسيلة والفضيلة، " +
         "وابعثه مقاماً محموداً الذي وعدته"
-    private var lastAdhanAt = 0L
 
     private lateinit var info: LinearLayout
     private lateinit var title: TextView
@@ -91,7 +90,6 @@ class MainActivity : Activity() {
     private var cachedRegion = -1
     private var today: List<ZonedDateTime?> = emptyList()
     private var tomorrowFajr: ZonedDateTime? = null
-    private var lastFired = ""
     private var tick = 0
 
     private val region get() = Regions.all[prefs.getInt("region", 0).coerceIn(0, Regions.all.size - 1)]
@@ -112,6 +110,7 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 5)
         Config.applyOrientation(this)
         setContentView(buildUi())
+        AdhanScheduler.schedule(this)
     }
 
     override fun onResume() {
@@ -323,12 +322,9 @@ class MainActivity : Activity() {
                 val t = today[i] ?: continue
                 if (i == 1 || i == 3) continue
                 val since = Duration.between(t, now).seconds
-                val key = "${now.toLocalDate()}-$i"
-                if (since in 0..30 && key != lastFired) {
-                    lastFired = key
-                    lastAdhanAt = System.currentTimeMillis()
-                    if (soundOn) playAzan()
-                }
+                // Same key as the background alarm (index without the Jumuah row) so it plays once.
+                val key = "${now.toLocalDate()}-${if (i > 3) i - 1 else i}"
+                if (since in 0..30 && Times.claim(this, key) && soundOn) playAzan()
             }
             tick++
             updateTile()
@@ -352,7 +348,7 @@ class MainActivity : Activity() {
 
     /** Rotating message card ("live tile"): after-adhan dua for 5 minutes, otherwise built-in + user messages. */
     private fun updateTile() {
-        if (prefs.getBoolean("tileAfterAdhan", true) && System.currentTimeMillis() - lastAdhanAt < 5 * 60_000) {
+        if (prefs.getBoolean("tileAfterAdhan", true) && System.currentTimeMillis() - prefs.getLong("lastAdhanAt", 0) < 5 * 60_000) {
             verse.visibility = View.VISIBLE; verse.text = afterAdhanDua; return
         }
         val list = (if (prefs.getBoolean("tilesBuiltin", true)) verses else emptyList()) + Config.customTiles(prefs)
@@ -368,6 +364,7 @@ class MainActivity : Activity() {
         cachedDate = null
         load(ZonedDateTime.now(ZoneId.of(region.zone)))
         PrayerWidget.updateAll(this)
+        AdhanScheduler.schedule(this)
     }
 
     private var settingsOpened = false

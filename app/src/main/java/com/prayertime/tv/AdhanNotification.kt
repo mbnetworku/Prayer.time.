@@ -15,7 +15,7 @@ import java.util.Locale
 /** Notification shown while the adhan plays: Pause/Resume and Stop buttons (works from the notification bar and lock screen). */
 object AdhanNotification {
     private const val CHANNEL = "adhan"
-    private const val ID = 1001
+    const val ID = 1001
     const val ACTION_PAUSE = "com.prayertime.tv.ADHAN_PAUSE"
     const val ACTION_RESUME = "com.prayertime.tv.ADHAN_RESUME"
     const val ACTION_STOP = "com.prayertime.tv.ADHAN_STOP"
@@ -23,10 +23,14 @@ object AdhanNotification {
     private fun flags() = PendingIntent.FLAG_UPDATE_CURRENT or
         (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
 
-    @Suppress("DEPRECATION")
     fun show(ctx: Context, paused: Boolean) {
         if (Build.VERSION.SDK_INT >= 33 &&
             ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(ID, build(ctx, paused))
+    }
+
+    @Suppress("DEPRECATION")
+    fun build(ctx: Context, paused: Boolean): Notification {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val ar = Locale.getDefault().language == "ar"
         if (Build.VERSION.SDK_INT >= 26) {
@@ -58,7 +62,7 @@ object AdhanNotification {
                 action(if (paused) ACTION_RESUME else ACTION_PAUSE))
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, if (ar) "إيقاف" else "Stop", action(ACTION_STOP))
             .setStyle(Notification.MediaStyle().setShowActionsInCompactView(0, 1))
-        nm.notify(ID, b.build())
+        return b.build()
     }
 
     fun cancel(ctx: Context) {

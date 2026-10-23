@@ -3,6 +3,13 @@
 
     <!-- Android 13+: notification with Pause / Stop while the adhan plays. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Background adhan: exact alarm at each prayer, re-scheduled after reboot, played by a foreground service. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -34,6 +41,26 @@
         <receiver
             android:name=".AdhanActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".AdhanAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".AdhanBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".AdhanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Home-screen widget (phones / tablets). -->
         <receiver
