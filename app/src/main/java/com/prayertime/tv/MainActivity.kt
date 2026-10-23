@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         countdown = tv(26f)
         verse = tv(28f)
-        val hint = tv(14f).apply { text = "اضغط OK للإعدادات"; alpha = 0.5f }
+        val hint = tv(14f).apply { text = "اضغط OK للإعدادات - أثناء الأذان: OK لإيقاف الصوت"; alpha = 0.5f }
         for (v in listOf(title, hijri, greg, clock, countdown, verse, hint)) {
             info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
         }
@@ -204,6 +204,12 @@ class MainActivity : Activity() {
     }
 
     override fun onKeyDown(keyCode: Int, e: KeyEvent): Boolean {
+        // While the adhan plays, OK / Back / Stop / Play-Pause only stop the sound.
+        if (adhan.isPlaying && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_BACK ||
+                keyCode == KeyEvent.KEYCODE_MEDIA_STOP || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
+            adhan.stop(); return true
+        }
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER ||
             keyCode == KeyEvent.KEYCODE_MENU) { showSettings(); return true }
         return super.onKeyDown(keyCode, e)

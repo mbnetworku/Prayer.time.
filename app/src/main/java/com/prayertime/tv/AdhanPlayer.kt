@@ -18,6 +18,7 @@ class AdhanPlayer(private val ctx: Context) {
 
     fun play() {
         stop()
+        playing = true
         val id = ctx.resources.getIdentifier("adhan", "raw", ctx.packageName)
         if (id != 0) {
             try {
@@ -41,10 +42,15 @@ class AdhanPlayer(private val ctx: Context) {
         for (i in 0 until 4) {
             handler.postDelayed({ tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 600) }, i * 1200L)
         }
-        handler.postDelayed({ tone.release() }, 6000L)
+        handler.postDelayed({ tone.release(); playing = false }, 6000L)
     }
 
+    val isPlaying get() = playing
+    private var playing = false
+
     fun stop() {
+        playing = false
+        handler.removeCallbacksAndMessages(null)
         player?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
         player = null
     }
