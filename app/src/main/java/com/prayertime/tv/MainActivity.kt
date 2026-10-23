@@ -221,9 +221,11 @@ class MainActivity : Activity() {
         val t = calc(d)
         val friday = d.dayOfWeek.value == 5
         // Index 3 is the Jumuah row: same time as Dhuhr, shown on Fridays only.
-        val hours = t.asList().toMutableList().also { it.add(3, it[2]) }
+        // Manual corrections from Settings > Adjust times (minutes per prayer, pref adj_0..adj_5).
+        val hours = t.asList().mapIndexed { i, h -> h + prefs.getInt("adj_$i", 0) / 60.0 }
+            .toMutableList().also { it.add(3, it[2]) }
         today = hours.mapIndexed { i, h -> if (i == 3 && !friday) null else at(d, h) }
-        tomorrowFajr = at(d.plusDays(1), calc(d.plusDays(1)).fajr)
+        tomorrowFajr = at(d.plusDays(1), calc(d.plusDays(1)).fajr + prefs.getInt("adj_0", 0) / 60.0)
         cachedDate = d; cachedRegion = prefs.getInt("region", 0)
 
         names2 = names

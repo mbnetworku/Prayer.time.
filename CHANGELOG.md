@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- New settings page **Adjust times**: move Fajr, Sunrise, Dhuhr (and Jumuah), Asr, Maghrib or Isha earlier/later by -60..+60 minutes with + / − buttons, plus reset. The adhan plays at the adjusted time.
 - Settings > Appearance: **Text size** for the main screen (80 %, 90 %, 100 %, 110 %, 125 %, 150 %).
 - Main screen: the verse line is now a rotating **message card (live tile)**.
 - New settings page **Duas & messages**: show/hide the built-in verses and duas, time per message (10/20/30/60 s), show the after-adhan dua for 5 minutes after each adhan, and add / delete your own duas or messages.

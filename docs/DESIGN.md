@@ -12,3 +12,4 @@
 - App name: `res/values/strings.xml` (English, default) and `res/values-ar/strings.xml` (Arabic). Icon: `mipmap-anydpi-v26/ic_launcher*.xml` (adaptive: `drawable/ic_launcher_background.xml` + `ic_launcher_foreground.xml`); TV banner: `drawable/banner.xml`.
 - SettingsActivity pages: `pageGeneral`, `pageAdhan`, `pageAppearance`, `pageLanguage`; selected tab saved in pref `settingsTab`.
 - Live tile: `MainActivity.updateTile()` - prefs `tilesBuiltin`, `tileAfterAdhan`, `tileSeconds`, `tiles` (JSON array via `Config.customTiles/saveTiles`). Text size: pref `fontScale` (percent) applied in `MainActivity.tv()`.
+- Manual time corrections: prefs `adj_0`..`adj_5` (minutes; Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha) added in `MainActivity.load()`; Jumuah copies the adjusted Dhuhr.

@@ -218,6 +218,7 @@ class SettingsActivity : Activity() {
 
         val tabs = listOf(
             t("عام", "General") to { b: LinearLayout -> pageGeneral(b) },
+            t("تعديل المواقيت", "Adjust times") to { b: LinearLayout -> pageAdjust(b) },
             t("الأذان", "Adhan") to { b: LinearLayout -> pageAdhan(b) },
             t("المظهر", "Appearance") to { b: LinearLayout -> pageAppearance(b) },
             t("الأدعية والرسائل", "Duas & messages") to { b: LinearLayout -> pageTiles(b) },
@@ -240,6 +241,35 @@ class SettingsActivity : Activity() {
         }
         show(tab.coerceIn(0, tabs.size - 1))
         return page
+    }
+
+    /** Shift each prayer by -60..+60 minutes when the calculated time differs from the local mosque. */
+    private fun pageAdjust(body: LinearLayout) {
+        section(body, t("تعديل أوقات الصلاة (بالدقائق)", "Adjust prayer times (minutes)"))
+        body.addView(text(t("استخدم + و − لتقديم أو تأخير أي صلاة. الجمعة تتبع الظهر.",
+            "Use + and − to move a prayer earlier or later. Jumuah follows Dhuhr."), 15f, c = Color.GRAY))
+        val names = listOf(t("الفجر", "Fajr"), t("الشروق", "Sunrise"), t("الظهر", "Dhuhr"),
+            t("العصر", "Asr"), t("المغرب", "Maghrib"), t("العشاء", "Isha"))
+        val labels = ArrayList<TextView>()
+        fun show(i: Int) {
+            val v = prefs.getInt("adj_$i", 0)
+            labels[i].text = (if (v > 0) "+" else "") + v + t(" د", " min")
+        }
+        names.forEachIndexed { i, name ->
+            val value = text("", 18f, true).apply { gravity = Gravity.CENTER; textDirection = View.TEXT_DIRECTION_LTR }
+            labels += value
+            val box = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            fun step(d: Int) { edit { putInt("adj_$i", (prefs.getInt("adj_$i", 0) + d).coerceIn(-60, 60)) }; show(i) }
+            box.addView(button("−") { step(-1) })
+            box.addView(value, LinearLayout.LayoutParams(dp(110), -2))
+            box.addView(button("+") { step(1) })
+            row(body, name, box)
+            show(i)
+        }
+        wide(body, button(t("إعادة كل التعديلات إلى 0", "Reset all adjustments to 0")) {
+            edit { for (i in 0..5) remove("adj_$i") }
+            names.indices.forEach { show(it) }
+        })
     }
 
     private fun pageTiles(body: LinearLayout) {
