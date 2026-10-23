@@ -129,62 +129,106 @@ class MainActivity : Activity() {
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
+    private lateinit var nextName: TextView
+    private lateinit var nextTime: TextView
+    private lateinit var progFill: View
+    private lateinit var progRest: View
+
+    private fun card(radius: Int = 26) = if (glassOn) Config.glass(density, radius)
+        else GradientDrawable().apply { setColor(Color.argb(60, 255, 255, 255)); cornerRadius = dp(radius).toFloat() }
+
+    /** Home screen: top bar (city, dates, settings) + hero (clock, next-prayer card, message) + prayer list. */
     private fun buildUi(): View {
         nameViews.clear(); timeViews.clear(); rows.clear()
         val root = LinearLayout(this).apply {
-            // Landscape (TV): table and clock side by side. Portrait (phone): clock on top, table below.
-            orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(16), dp(if (portrait) 56 else 12), dp(16), dp(12))
+            orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(20), dp(if (portrait) 28 else 14), dp(20), dp(14))
         }
-        // Right side (first child in RTL): prayer table.
+
+        // ---- top bar
+        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        title = tv(26f, true).apply { gravity = Gravity.START }
+        val dates = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            background = card(20); setPadding(dp(18), dp(6), dp(18), dp(6))
+        }
+        hijri = tv(17f, true); greg = tv(14f).apply { alpha = 0.75f }
+        dates.addView(hijri); dates.addView(greg)
+        val gear = tv(15f, true).apply {
+            text = "الإعدادات"; setPadding(dp(18), dp(10), dp(18), dp(10)); background = card(22)
+            isClickable = true; isFocusable = true; setOnClickListener { openSettings() }
+        }
+        bar.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        if (!portrait) bar.addView(dates, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(12) })
+        bar.addView(gear)
+        root.addView(bar, LinearLayout.LayoutParams(-1, -2))
+        if (portrait) root.addView(dates, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
+        val main = LinearLayout(this).apply { orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL }
+        root.addView(main, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12) })
+
+        // ---- prayer list
         val table = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            if (glassOn) { background = Config.glass(density, 28); setPadding(dp(16), dp(12), dp(16), dp(12)) }
+            orientation = LinearLayout.VERTICAL; background = card(); setPadding(dp(12), dp(12), dp(12), dp(12))
         }
-        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for ((t, w) in listOf("الصلاة" to 1.2f, "الأذان" to 1f)) {
-            head.addView(tv(16f).apply { text = t; alpha = 0.7f }, LinearLayout.LayoutParams(0, -2, w))
-        }
-        table.addView(head)
         for (i in names.indices) {
             val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                setPadding(16, 0, 16, 0)
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0)
             }
-            val n = tv(34f, true).apply { text = names[i] }
-            val t = tv(38f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
-            row.addView(n, LinearLayout.LayoutParams(0, -2, 1.2f))
-            row.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
+            val dot = View(this).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(textColor) }
+            }
+            val n = tv(30f, true).apply { text = names[i]; gravity = Gravity.START or Gravity.CENTER_VERTICAL }
+            val t = tv(32f, true).apply { textDirection = View.TEXT_DIRECTION_RTL; gravity = Gravity.END or Gravity.CENTER_VERTICAL }
+            row.addView(dot, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(14) })
+            row.addView(n, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(t, LinearLayout.LayoutParams(-2, -2))
             nameViews += n; timeViews += t; rows += row
-            table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f))
+            table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(3), 0, dp(3)) })
         }
 
-        // Left side: title, dates, clock, countdown, verse.
-        info = LinearLayout(this).apply {
+        // ---- hero: clock, next-prayer card, rotating message
+        info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        clock = tv(if (portrait) 64f else 92f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
+        val nextCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            if (glassOn) { background = Config.glass(density, 28); setPadding(dp(16), dp(12), dp(16), dp(12)) }
+            background = if (glassOn) Config.glass(density, 24, highlightColor)
+                else GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(24).toFloat() }
+            setPadding(dp(24), dp(14), dp(24), dp(16))
         }
-        title = tv(34f, true); hijri = tv(26f); greg = tv(22f)
-        clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
-        countdown = tv(26f)
-        verse = tv(28f).apply {
-            setPadding(dp(24), dp(14), dp(24), dp(14))
-            background = if (glassOn) Config.glass(density, 20) else GradientDrawable().apply {
-                cornerRadius = dp(16).toFloat(); setColor(Color.argb(50, 255, 255, 255)); setStroke(dp(1), textColor)
-            }
+        val nextLine = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        nextName = tv(26f, true); nextTime = tv(26f).apply { alpha = 0.85f; textDirection = View.TEXT_DIRECTION_RTL }
+        nextLine.addView(tv(18f).apply { text = "الصلاة القادمة  "; alpha = 0.8f })
+        nextLine.addView(nextName); nextLine.addView(tv(26f).apply { text = "  •  "; alpha = 0.5f }); nextLine.addView(nextTime)
+        countdown = tv(40f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
+        val track = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable().apply { setColor(Color.argb(50, 255, 255, 255)); cornerRadius = dp(4).toFloat() }
         }
-        val hint = tv(14f).apply { text = "اضغط OK للإعدادات - أثناء الأذان: OK لإيقاف الصوت"; alpha = 0.5f }
-        for (v in listOf(title, hijri, greg, clock, countdown, verse, hint)) {
-            info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
+        progFill = View(this).apply { background = GradientDrawable().apply { setColor(textColor); cornerRadius = dp(4).toFloat() } }
+        progRest = View(this)
+        track.addView(progFill, LinearLayout.LayoutParams(0, -1, 0f)); track.addView(progRest, LinearLayout.LayoutParams(0, -1, 1f))
+        nextCard.addView(nextLine)
+        nextCard.addView(countdown, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(4) })
+        nextCard.addView(track, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(10) })
+        verse = tv(24f).apply {
+            setPadding(dp(24), dp(14), dp(24), dp(14)); background = card(20)
         }
+        info.addView(clock)
+        info.addView(nextCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10); setMargins(dp(16), dp(10), dp(16), 0) })
+        info.addView(verse, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(16), dp(16), 0) })
+
         fun lp(w: Float) = (if (portrait) LinearLayout.LayoutParams(-1, 0, w) else LinearLayout.LayoutParams(0, -1, w))
-            .apply { setMargins(dp(8), dp(8), dp(8), dp(8)) }
-        if (portrait) { root.addView(info, lp(1f)); root.addView(table, lp(1.3f)) }
-        else { root.addView(table, lp(1f)); root.addView(info, lp(1.2f)) }
+        if (portrait) {
+            main.addView(info, lp(1f))
+            main.addView(table, lp(1.25f).apply { topMargin = dp(12) })
+        } else {
+            main.addView(table, lp(0.9f).apply { marginEnd = dp(16) })
+            main.addView(info, lp(1.2f))
+        }
         updateTile()
 
-        // Layers: background colour, wallpaper, dim overlay, content, settings button.
+        // Layers: background colour, wallpaper, dim overlay, content.
         val frame = FrameLayout(this).apply {
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             if (glassOn && !prefs.contains("bgColor")) background = Config.glassBackground() else setBackgroundColor(bgColor)
@@ -198,14 +242,6 @@ class MainActivity : Activity() {
         frame.addView(View(this).apply { setBackgroundColor(Color.argb(dimPercent * 255 / 100, 0, 0, 0)) },
             FrameLayout.LayoutParams(-1, -1))
         frame.addView(root, FrameLayout.LayoutParams(-1, -1))
-        val gear = TextView(this).apply {
-            text = "الإعدادات"; textSize = 16f; setTextColor(textColor)
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-            background = if (glassOn) Config.glass(density, 22) else GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.argb(110, 0, 0, 0)); setStroke(dp(1), textColor) }
-            isClickable = true; isFocusable = true
-            setOnClickListener { openSettings() }
-        }
-        frame.addView(gear, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.LEFT).apply { setMargins(dp(16), dp(12), 0, 0) })
         return frame
     }
 
@@ -308,13 +344,25 @@ class MainActivity : Activity() {
             if (next < 0) next = 0
             nextTime?.let {
                 val s = Duration.between(now, it).seconds.coerceAtLeast(0)
-                countdown.text = String.format(Locale.US, "المتبقي لـ%s  %d:%02d:%02d",
-                    names2[next], s / 3600, s % 3600 / 60, s % 60)
+                countdown.text = String.format(Locale.US, "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60)
+                nextName.text = names2[next]
+                nextTime.text = timeViews.getOrNull(next)?.text ?: ""
+                // Progress from the previous prayer to the next one.
+                val prev = today.filterNotNull().lastOrNull { !it.isAfter(now) } ?: now.toLocalDate().atStartOfDay(now.zone)
+                val total = Duration.between(prev, it).seconds.coerceAtLeast(1)
+                val done = (1f - s.toFloat() / total).coerceIn(0f, 1f)
+                (progFill.layoutParams as LinearLayout.LayoutParams).weight = done
+                (progRest.layoutParams as LinearLayout.LayoutParams).weight = 1f - done
+                progFill.requestLayout()
             }
-            for (i in rows.indices) rows[i].background = when {
-                i != next -> null
-                glassOn -> Config.glass(density, 16, highlightColor)
-                else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(12).toFloat() }
+            for (i in rows.indices) {
+                val passed = today.getOrNull(i)?.let { !it.isAfter(now) } ?: false
+                rows[i].background = when {
+                    i != next -> null
+                    glassOn -> Config.glass(density, 18, highlightColor)
+                    else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(18).toFloat() }
+                }
+                rows[i].alpha = if (passed && i != next) 0.45f else 1f
             }
 
             // Fire adhan (not for sunrise) within 30s after the exact time.
