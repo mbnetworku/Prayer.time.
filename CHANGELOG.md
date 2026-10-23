@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- A copy of the latest APK (Build 11) is kept in the repo root as `PrayerTimeTV.apk`. The Releases page always has the newest build.
 - Mouse/touch friendly: a visible **الإعدادات** button (top-left) opens the settings; all lists and pickers work with a mouse.
 - Customisation: text colour, highlight colour (next prayer), background colour (colour palette or any #RRGGBB), wallpaper (5 built-in gradients or an image from the device), background dimming, reset to defaults.
 - Adhan: besides the built-in `adhan*.mp3` files you can pick any audio file from the device.
