@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#000000" android:pathData="M0,0h320v180h-320z" />
+    <!-- crescent -->
+    <path android:fillColor="#8EC5FF"
+        android:pathData="M175,40 A50,50 0 1,0 175,140 A38,38 0 1,1 175,40 Z" />
+    <!-- dome -->
+    <path android:fillColor="#8EC5FF"
+        android:pathData="M135,125 L135,100 A15,15 0 0,1 165,100 L165,125 Z" />
+</vector>
