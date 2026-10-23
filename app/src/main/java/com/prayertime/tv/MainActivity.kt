@@ -168,7 +168,10 @@ class MainActivity : Activity() {
         if (portrait) root.addView(dates, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         val main = LinearLayout(this).apply { orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL }
-        root.addView(main, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12) })
+        // Portrait (phone): everything takes its natural height and the page scrolls - nothing is squeezed.
+        if (portrait) root.addView(android.widget.ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(main) },
+            LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12) })
+        else root.addView(main, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12) })
 
         // ---- prayer list
         val table = LinearLayout(this).apply {
@@ -176,7 +179,7 @@ class MainActivity : Activity() {
         }
         for (i in names.indices) {
             val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0)
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(if (portrait) 12 else 0), dp(18), dp(if (portrait) 12 else 0))
             }
             val dot = View(this).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(textColor) }
@@ -187,7 +190,7 @@ class MainActivity : Activity() {
             row.addView(n, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(t, LinearLayout.LayoutParams(-2, -2))
             nameViews += n; timeViews += t; rows += row
-            table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(3), 0, dp(3)) })
+            table.addView(row, (if (portrait) LinearLayout.LayoutParams(-1, -2) else LinearLayout.LayoutParams(-1, 0, 1f)).apply { setMargins(0, dp(3), 0, dp(3)) })
         }
 
         // ---- hero: clock, next-prayer card, rotating message
@@ -236,8 +239,8 @@ class MainActivity : Activity() {
         listBox.addView(table, FrameLayout.LayoutParams(-1, -1))
         fun lp(w: Float) = (if (portrait) LinearLayout.LayoutParams(-1, 0, w) else LinearLayout.LayoutParams(0, -1, w))
         if (portrait) {
-            main.addView(info, lp(1f))
-            main.addView(listBox, lp(1.25f).apply { topMargin = dp(12) })
+            main.addView(info, LinearLayout.LayoutParams(-1, -2))
+            main.addView(listBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         } else {
             main.addView(listBox, lp(0.9f).apply { marginEnd = dp(16) })
             main.addView(info, lp(1.2f))

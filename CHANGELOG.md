@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Fix overlapping on phones (portrait): the clock, next-prayer card, message and prayer list now take their natural height and the screen scrolls, instead of being squeezed on top of each other.
 - Readability over a photo: panels become dark frosted glass, text gets a soft shadow, the next-prayer card uses dark glass, and past prayers are less faded (70 %).
 - **Prayer list background**: Settings > Appearance > Prayer list background - choose your own picture shown inside the prayer-times panel (rounded, behind the names and times), with picture dimming (0-80 %) and a remove button. Independent of the full-screen wallpaper.
 - With your own wallpaper image, the glass stays clear: the next-prayer card and highlighted row use bright clear glass instead of the blue/purple tint, panels are more transparent, and the settings screen shows your image behind it instead of the purple backdrop.
