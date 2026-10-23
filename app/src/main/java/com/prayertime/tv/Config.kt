@@ -45,19 +45,24 @@ object Config {
 
     // ---- Liquid glass style (pref "glass", default on) ----------------------------------
 
-    /** Frosted glass panel: translucent white (or tinted) gradient, soft light edge, rounded corners. */
-    fun glass(density: Float, radiusDp: Int, tint: Int? = null): GradientDrawable {
-        val top = if (tint != null) Color.argb(170, Color.red(tint), Color.green(tint), Color.blue(tint)) else Color.argb(64, 255, 255, 255)
-        val bottom = if (tint != null) Color.argb(110, Color.red(tint), Color.green(tint), Color.blue(tint)) else Color.argb(22, 255, 255, 255)
-        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply {
-            cornerRadius = radiusDp * density
-            setStroke(density.toInt().coerceAtLeast(1), Color.argb(110, 255, 255, 255))
-        }
-    }
+    /** Liquid glass panel (see GlassDrawable): clear body, top sheen, light-catching rim. */
+    fun glass(density: Float, radiusDp: Int, tint: Int? = null): android.graphics.drawable.Drawable =
+        GlassDrawable(density, radiusDp, tint)
 
-    /** Deep colourful backdrop that makes the glass visible when no wallpaper is chosen. */
-    fun glassBackground() = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
-        Color.parseColor("#0F2A5C"), Color.parseColor("#3A1C71"), Color.parseColor("#0E5E6F")))
+    /** Deep backdrop with soft coloured glows, so the glass has something to refract. */
+    fun glassBackground(): android.graphics.drawable.Drawable {
+        val base = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
+            Color.parseColor("#06122E"), Color.parseColor("#1B0F3D"), Color.parseColor("#04262E")))
+        fun blob(color: Int, cx: Float, cy: Float, radius: Float) = GradientDrawable().apply {
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            colors = intArrayOf(color, Color.TRANSPARENT)
+            setGradientCenter(cx, cy); gradientRadius = radius
+        }
+        return android.graphics.drawable.LayerDrawable(arrayOf(base,
+            blob(Color.argb(150, 64, 120, 255), 0.15f, 0.2f, 900f),
+            blob(Color.argb(130, 190, 70, 220), 0.85f, 0.35f, 800f),
+            blob(Color.argb(120, 20, 200, 190), 0.45f, 1.0f, 900f)))
+    }
 
     // ---- Screen orientation (pref "orientation": auto / landscape / portrait) ------------
 
