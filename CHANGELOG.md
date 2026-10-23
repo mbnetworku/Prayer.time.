@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Settings screen: removed all drop-down lists (they opened as pop-ups). Region, adhan, language, Hijri adjustment and wallpaper are now buttons shown directly on the page; the selected one is highlighted. Only the system file picker still opens separately.
 - Added two more adhan recordings supplied by the repo owner: `adhan_2.mp3` and `adhan_3.mp3`. They appear in Settings > Choose adhan as "الأذان 2" / "Adhan 2" and "الأذان 3" / "Adhan 3".
 - Settings are now one dedicated full screen (`SettingsActivity`) instead of stacked pop-up lists. Opened by the **الإعدادات** button (or OK/Menu); everything is on one scrollable page and works with mouse, touch or remote.
 - Settings language switch: Arabic / English (region names are translated too). The prayer-times screen stays Arabic with 0-9 digits.

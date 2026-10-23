@@ -10,13 +10,10 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
-import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -34,8 +31,7 @@ class SettingsActivity : Activity() {
     private val accent = Config.defText
     private val reqImage = 21
     private val reqAudio = 22
-    private var azanSpinner: Spinner? = null
-    private var azanAdapter: ArrayAdapter<String>? = null
+    private lateinit var azanBox: LinearLayout
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -83,17 +79,41 @@ class SettingsActivity : Activity() {
         body.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
     }
 
-    private fun spinnerOf(items: List<String>, sel: Int, onPick: (Int) -> Unit): Spinner {
-        val sp = Spinner(this)
-        val ad = ArrayAdapter(this, android.R.layout.simple_spinner_item, items.toMutableList())
-        ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        sp.adapter = ad
-        sp.setSelection(sel.coerceAtLeast(0), false)
-        sp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) { onPick(pos) }
-            override fun onNothingSelected(p: AdapterView<*>?) {}
+    /** Inline choice buttons (no drop-down / pop-up). The selected one is highlighted. */
+    private fun fillChips(box: LinearLayout, items: List<String>, selected: () -> Int, perRow: Int, onPick: (Int) -> Unit) {
+        box.removeAllViews()
+        val views = ArrayList<TextView>()
+        fun paint() {
+            val sel = selected()
+            views.forEachIndexed { i, v ->
+                v.background = round(if (i == sel) Color.parseColor("#2A5FA8") else Color.parseColor("#232A35"))
+            }
         }
-        return sp
+        items.chunked(perRow).forEachIndexed { r, chunk ->
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            chunk.forEachIndexed { k, label ->
+                val idx = r * perRow + k
+                val v = TextView(this).apply {
+                    text = label; textSize = 16f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+                    setPadding(dp(10), dp(12), dp(10), dp(12))
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { onPick(idx); paint() }
+                }
+                views += v
+                line.addView(v, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
+            }
+            repeat(perRow - chunk.size) { line.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f)) }
+            box.addView(line)
+        }
+        paint()
+    }
+
+    private fun chipGroup(body: LinearLayout, label: String, items: List<String>, perRow: Int,
+                          selected: () -> Int, onPick: (Int) -> Unit) {
+        body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fillChips(box, items, selected, perRow, onPick)
+        body.addView(box, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun switchOf(key: String, def: Boolean) = Switch(this).apply {
@@ -111,11 +131,12 @@ class SettingsActivity : Activity() {
 
     private fun currentAzan() = prefs.getString("azan", "adhan") ?: "adhan"
 
-    private fun refreshAzan() {
-        val items = azanItems()
-        val ad = azanAdapter ?: return
-        ad.clear(); ad.addAll(items.map { it.first })
-        azanSpinner?.setSelection(items.indexOfFirst { it.second == currentAzan() }.coerceAtLeast(0), false)
+    private fun fillAzan() {
+        fillChips(azanBox, azanItems().map { it.first },
+            { azanItems().indexOfFirst { it.second == currentAzan() }.coerceAtLeast(0) }, 3) { pos ->
+            val v = azanItems().getOrNull(pos)?.second
+            if (v != null) { edit { putString("azan", v) }; adhan.playSelected() }
+        }
     }
 
     // ---- the page --------------------------------------------------------------------------
@@ -142,42 +163,34 @@ class SettingsActivity : Activity() {
 
         // Language of this settings screen.
         section(body, t("اللغة", "Language"))
-        row(body, t("لغة الإعدادات", "Settings language"),
-            spinnerOf(listOf("العربية", "English"), if (isAr) 0 else 1) { pos ->
-                val new = if (pos == 0) "ar" else "en"
-                if (new != lang) { edit { putString("lang", new) }; recreate() }
-            })
+        chipGroup(body, t("لغة الإعدادات", "Settings language"), listOf("العربية", "English"), 2,
+            { if (isAr) 0 else 1 }) { pos ->
+            val new = if (pos == 0) "ar" else "en"
+            if (new != lang) { edit { putString("lang", new) }; recreate() }
+        }
 
         // General.
         section(body, t("عام", "General"))
-        row(body, t("المنطقة", "Region"),
-            spinnerOf(Regions.all.map { if (isAr) it.nameAr else it.nameEn },
-                prefs.getInt("region", 0)) { pos -> edit { putInt("region", pos) } })
+        chipGroup(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn }, 3,
+            { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
         row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
         row(body, t("عرض المواقيت فقط (إخفاء التاريخ والساعة)", "Show prayer times only (hide dates and clock)"),
             switchOf("timesOnly", false))
-        row(body, t("تعديل التاريخ الهجري (أيام)", "Hijri date adjustment (days)"),
-            spinnerOf(listOf("-1", "0", "+1"), prefs.getInt("hijriAdj", 0) + 1) { pos ->
-                edit { putInt("hijriAdj", pos - 1) }
-            })
+        chipGroup(body, t("تعديل التاريخ الهجري (أيام)", "Hijri date adjustment (days)"), listOf("-1", "0", "+1"), 3,
+            { prefs.getInt("hijriAdj", 0) + 1 }) { pos -> edit { putInt("hijriAdj", pos - 1) } }
 
         // Adhan.
         section(body, t("الأذان", "Adhan"))
         row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true))
-        val sp = spinnerOf(azanItems().map { it.first }, azanItems().indexOfFirst { it.second == currentAzan() }) { pos ->
-            val v = azanItems().getOrNull(pos)?.second
-            if (v != null && v != currentAzan()) { edit { putString("azan", v) }; adhan.playSelected() }
-        }
-        azanSpinner = sp
-        @Suppress("UNCHECKED_CAST")
-        azanAdapter = sp.adapter as ArrayAdapter<String>
-        row(body, t("اختيار الأذان", "Choose adhan"), sp)
+        body.addView(text(t("اختيار الأذان (اضغط للاستماع)", "Choose adhan (tap to listen)"), 18f),
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        azanBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(azanBox, LinearLayout.LayoutParams(-1, -2))
+        fillAzan()
         wide(body, button(t("اختيار ملف صوت من الجهاز…", "Choose an audio file from the device…")) {
             pickFile("audio/*", reqAudio)
         })
-        wide(body, button(t("تجربة / إيقاف الصوت", "Test / stop sound")) {
-            if (adhan.isPlaying) adhan.stop() else adhan.playSelected()
-        })
+        wide(body, button(t("إيقاف الصوت", "Stop sound")) { adhan.stop() })
 
         // Appearance.
         section(body, t("المظهر", "Appearance"))
@@ -185,21 +198,22 @@ class SettingsActivity : Activity() {
         colorRow(body, t("لون تمييز الصلاة القادمة", "Next-prayer highlight color"), "hlColor", Config.defHighlight)
         colorRow(body, t("لون الخلفية", "Background color"), "bgColor", Color.BLACK)
 
+        val hasImage = (prefs.getString("bgImage", "") ?: "").startsWith("uri:")
         val wallItems = listOf(t("بدون", "None")) + Config.presets.map { if (isAr) it.ar else it.en } +
-            (if ((prefs.getString("bgImage", "") ?: "").startsWith("uri:")) listOf(t("صورتك", "Your image")) else emptyList())
-        val bg = prefs.getString("bgImage", "") ?: ""
-        val wallSel = when {
-            bg.startsWith("preset:") -> (bg.removePrefix("preset:").toIntOrNull() ?: 0) + 1
-            bg.startsWith("uri:") -> wallItems.size - 1
-            else -> 0
-        }
-        row(body, t("الخلفية (تدرج)", "Wallpaper (gradient)"), spinnerOf(wallItems, wallSel) { pos ->
-            val cur = prefs.getString("bgImage", "") ?: ""
+            (if (hasImage) listOf(t("صورتك", "Your image")) else emptyList())
+        chipGroup(body, t("الخلفية (تدرج)", "Wallpaper (gradient)"), wallItems, 3, {
+            val bg = prefs.getString("bgImage", "") ?: ""
             when {
-                pos == 0 -> if (cur.isNotEmpty()) edit { remove("bgImage") }
-                pos <= Config.presets.size -> if (cur != "preset:${pos - 1}") edit { putString("bgImage", "preset:${pos - 1}") }
+                bg.startsWith("preset:") -> (bg.removePrefix("preset:").toIntOrNull() ?: 0) + 1
+                bg.startsWith("uri:") -> wallItems.size - 1
+                else -> 0
             }
-        })
+        }) { pos ->
+            when {
+                pos == 0 -> edit { remove("bgImage") }
+                pos <= Config.presets.size -> edit { putString("bgImage", "preset:${pos - 1}") }
+            }
+        }
         wide(body, button(t("اختيار صورة خلفية من الجهاز…", "Choose a wallpaper image from the device…")) {
             pickFile("image/*", reqImage)
         })
@@ -301,7 +315,7 @@ class SettingsActivity : Activity() {
         if (req == reqImage) { edit { putString("bgImage", "uri:$uri") }; recreate() }
         else if (req == reqAudio) {
             edit { putString("azan", "uri"); putString("azanUri", uri.toString()) }
-            refreshAzan(); adhan.playSelected()
+            fillAzan(); adhan.playSelected()
         }
     }
 }
