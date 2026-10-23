@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Added two more adhan recordings supplied by the repo owner: `adhan_2.mp3` and `adhan_3.mp3`. They appear in Settings > Choose adhan as "الأذان 2" / "Adhan 2" and "الأذان 3" / "Adhan 3".
 - Settings are now one dedicated full screen (`SettingsActivity`) instead of stacked pop-up lists. Opened by the **الإعدادات** button (or OK/Menu); everything is on one scrollable page and works with mouse, touch or remote.
 - Settings language switch: Arabic / English (region names are translated too). The prayer-times screen stays Arabic with 0-9 digits.
 - A copy of the latest APK (Build 11) is kept in the repo root as `PrayerTimeTV.apk`. The Releases page always has the newest build.
