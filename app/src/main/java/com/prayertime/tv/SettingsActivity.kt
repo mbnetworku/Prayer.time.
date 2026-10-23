@@ -22,7 +22,8 @@ import android.widget.Toast
 class SettingsActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("prayer", Context.MODE_PRIVATE) }
     private lateinit var adhan: AdhanPlayer
-    private val lang get() = prefs.getString("lang", "ar") ?: "ar"
+    private val lang get() = prefs.getString("lang", null)
+        ?: if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
     private val isAr get() = lang == "ar"
     private fun t(ar: String, en: String) = if (isAr) ar else en
 
@@ -37,6 +38,13 @@ class SettingsActivity : Activity() {
         super.onCreate(b)
         adhan = AdhanPlayer(this)
         setContentView(build())
+    }
+
+    override fun onResume() {
+        super.onResume()
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
     }
 
     override fun onPause() { adhan.stop(); super.onPause() }
@@ -141,6 +149,11 @@ class SettingsActivity : Activity() {
 
     // ---- the page --------------------------------------------------------------------------
 
+    private var tab: Int
+        get() = prefs.getInt("settingsTab", 0)
+        set(v) { edit { putInt("settingsTab", v) } }
+
+    /** Full fresh screen: header, side menu with categories, and the selected category's page. */
     private fun build(): View {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setBackgroundColor(pageBg)
@@ -156,12 +169,46 @@ class SettingsActivity : Activity() {
         header.addView(View(this), LinearLayout.LayoutParams(dp(80), 1))
         page.addView(header, LinearLayout.LayoutParams(-1, -2))
 
+        val main = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        page.addView(main, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val menu = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(16), dp(12), dp(16)); setBackgroundColor(cardBg)
+        }
+        main.addView(menu, LinearLayout.LayoutParams(dp(220), -1))
+
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(32), dp(8), dp(32), dp(40))
         }
-        page.addView(ScrollView(this).apply { addView(body) }, LinearLayout.LayoutParams(-1, 0, 1f))
+        val scroll = ScrollView(this).apply { addView(body) }
+        main.addView(scroll, LinearLayout.LayoutParams(0, -1, 1f))
 
-        // Language of this settings screen.
+        val tabs = listOf(
+            t("عام", "General") to { b: LinearLayout -> pageGeneral(b) },
+            t("الأذان", "Adhan") to { b: LinearLayout -> pageAdhan(b) },
+            t("المظهر", "Appearance") to { b: LinearLayout -> pageAppearance(b) },
+            t("اللغة", "Language") to { b: LinearLayout -> pageLanguage(b) })
+        val items = ArrayList<TextView>()
+        fun show(i: Int) {
+            tab = i
+            items.forEachIndexed { k, v -> v.background = round(if (k == i) Color.parseColor("#2A5FA8") else Color.TRANSPARENT) }
+            body.removeAllViews(); adhan.stop()
+            tabs[i].second(body)
+            scroll.scrollTo(0, 0)
+        }
+        tabs.forEachIndexed { i, (label, _) ->
+            val v = text(label, 19f, true).apply {
+                setPadding(dp(16), dp(14), dp(16), dp(14)); isClickable = true; isFocusable = true
+                setOnClickListener { show(i) }
+            }
+            items += v
+            menu.addView(v, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+        }
+        show(tab.coerceIn(0, tabs.size - 1))
+        return page
+    }
+
+    private fun pageLanguage(body: LinearLayout) {
         section(body, t("اللغة", "Language"))
         chipGroup(body, t("لغة الإعدادات", "Settings language"), listOf("العربية", "English"), 2,
             { if (isAr) 0 else 1 }) { pos ->
@@ -169,7 +216,9 @@ class SettingsActivity : Activity() {
             if (new != lang) { edit { putString("lang", new) }; recreate() }
         }
 
-        // General.
+    }
+
+    private fun pageGeneral(body: LinearLayout) {
         section(body, t("عام", "General"))
         chipGroup(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn }, 3,
             { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
@@ -179,7 +228,9 @@ class SettingsActivity : Activity() {
         chipGroup(body, t("تعديل التاريخ الهجري (أيام)", "Hijri date adjustment (days)"), listOf("-1", "0", "+1"), 3,
             { prefs.getInt("hijriAdj", 0) + 1 }) { pos -> edit { putInt("hijriAdj", pos - 1) } }
 
-        // Adhan.
+    }
+
+    private fun pageAdhan(body: LinearLayout) {
         section(body, t("الأذان", "Adhan"))
         row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true))
         body.addView(text(t("اختيار الأذان (اضغط للاستماع)", "Choose adhan (tap to listen)"), 18f),
@@ -192,7 +243,9 @@ class SettingsActivity : Activity() {
         })
         wide(body, button(t("إيقاف الصوت", "Stop sound")) { adhan.stop() })
 
-        // Appearance.
+    }
+
+    private fun pageAppearance(body: LinearLayout) {
         section(body, t("المظهر", "Appearance"))
         colorRow(body, t("لون النص", "Text color"), "textColor", Config.defText)
         colorRow(body, t("لون تمييز الصلاة القادمة", "Next-prayer highlight color"), "hlColor", Config.defHighlight)
@@ -238,7 +291,6 @@ class SettingsActivity : Activity() {
             edit { remove("textColor"); remove("hlColor"); remove("bgColor"); remove("bgImage"); remove("dim") }
             recreate()
         })
-        return page
     }
 
     private fun colorRow(body: LinearLayout, label: String, key: String, def: Int) {

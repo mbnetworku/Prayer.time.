@@ -1,11 +1,21 @@
+<!-- Android TV launcher banner (320x180): same crescent / mosque motif as the app icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="320dp" android:height="180dp"
     android:viewportWidth="320" android:viewportHeight="180">
-    <path android:fillColor="#000000" android:pathData="M0,0h320v180h-320z" />
-    <!-- crescent -->
-    <path android:fillColor="#8EC5FF"
-        android:pathData="M175,40 A50,50 0 1,0 175,140 A38,38 0 1,1 175,40 Z" />
-    <!-- dome -->
-    <path android:fillColor="#8EC5FF"
-        android:pathData="M135,125 L135,100 A15,15 0 0,1 165,100 L165,125 Z" />
+    <path android:fillColor="#0B1B3A" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#14305A" android:pathData="M0,120 Q160,70 320,120 L320,180 L0,180 Z" />
+    <group android:translateX="106" android:translateY="36" android:scaleX="1.0" android:scaleY="1.0">
+        <path android:fillColor="#F2C94C"
+            android:pathData="M54,22 A26,26 0 0,0 54,74 A32,32 0 0,1 54,22 Z" />
+        <path android:fillColor="#F2C94C"
+            android:pathData="M64,30 l1.6,4 4,1.6 -4,1.6 -1.6,4 -1.6,-4 -4,-1.6 4,-1.6 z" />
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M56,64 L56,56 A9,9 0 0,1 74,56 L74,64 Z" />
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M64.2,46.5 L65,43 L65.8,46.5 Z" />
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M77,64 L77,42 L79,38 L81,42 L81,64 Z" />
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M50,64 h32 v3 h-32 z" />
+    </group>
 </vector>

@@ -3,6 +3,10 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- New app icon (adaptive launcher icon) and TV banner: gold crescent, star, white mosque dome and minaret on dark blue.
+- App name follows the device language: **مواقيت الصلاة** on Arabic devices, **Prayer Times** on English / other languages.
+- Settings: a fresh full-screen page (system bars hidden) with a side menu - General, Adhan, Appearance, Language - showing one category at a time. The last opened category is remembered.
+- Settings language now defaults to the device language (Arabic if the device is Arabic, otherwise English) until changed in Settings > Language.
 - Added a fourth adhan recording supplied by the repo owner: `adhan_4.mp3` ("الأذان 4" / "Adhan 4" in Settings).
 - Settings screen: removed all drop-down lists (they opened as pop-ups). Region, adhan, language, Hijri adjustment and wallpaper are now buttons shown directly on the page; the selected one is highlighted. Only the system file picker still opens separately.
 - Added two more adhan recordings supplied by the repo owner: `adhan_2.mp3` and `adhan_3.mp3`. They appear in Settings > Choose adhan as "الأذان 2" / "Adhan 2" and "الأذان 3" / "Adhan 3".
