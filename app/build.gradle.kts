@@ -15,6 +15,17 @@ android {
         versionName = "1.0"
     }
 
+    // Fixed key so every build has the same signature (updates install over older builds).
+    // This is a public, non-secret key for sideloading only - not for Google Play.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("prayer-debug.jks")
+            storePassword = "prayertime"
+            keyAlias = "prayertime"
+            keyPassword = "prayertime"
+        }
+    }
+
     buildTypes {
         release { isMinifyEnabled = false }
     }
