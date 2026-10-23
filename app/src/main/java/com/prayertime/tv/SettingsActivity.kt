@@ -47,6 +47,7 @@ class SettingsActivity : Activity() {
     private val red = Color.parseColor("#FF453A")
     private val secondary = Color.argb(165, 255, 255, 255)
     private val reqImage = 21
+    private val reqListImage = 23
     private val reqAudio = 22
     private lateinit var azanBox: LinearLayout
     private var card: LinearLayout? = null // the group card new items are added to
@@ -537,6 +538,18 @@ class SettingsActivity : Activity() {
         dimBox.addView(dimLabel)
         row(body, t("تعتيم الخلفية", "Dimming"), dimBox)
 
+        group(body, t("خلفية قائمة المواقيت", "Prayer list background"))
+        action(body, t("اختيار صورة خلف المواقيت…", "Choose a picture behind the prayer times…")) {
+            pickFile("image/*", reqListImage)
+        }
+        if (!prefs.getString("listImage", "").isNullOrEmpty()) {
+            val lDims = listOf(0, 20, 40, 60, 80)
+            choices(body, t("تعتيم الصورة", "Picture dimming"), lDims.map { "$it%" }, 5,
+                { lDims.indexOf(prefs.getInt("listDim", 40)).coerceAtLeast(0) },
+                t("أعلى = نص أوضح", "Higher = easier to read")) { pos -> edit { putInt("listDim", lDims[pos]) } }
+            action(body, t("إزالة الصورة", "Remove picture"), red) { edit { remove("listImage") }; recreate() }
+        }
+
         group(body)
         action(body, t("إعادة الألوان والخلفية الافتراضية", "Reset colors and wallpaper"), red) {
             edit { remove("textColor"); remove("hlColor"); remove("bgColor"); remove("bgImage"); remove("dim") }
@@ -673,6 +686,7 @@ class SettingsActivity : Activity() {
         try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         catch (_: Exception) { /* not persistable: works until the app is restarted */ }
         if (req == reqImage) { edit { putString("bgImage", "uri:$uri") }; recreate() }
+        else if (req == reqListImage) { edit { putString("listImage", uri.toString()) }; recreate() }
         else if (req == reqAudio) {
             edit { putString("azan", "uri"); putString("azanUri", uri.toString()) }
             fillAzan(); adhan.playSelected()

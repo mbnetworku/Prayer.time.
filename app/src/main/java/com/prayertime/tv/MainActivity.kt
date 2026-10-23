@@ -218,12 +218,25 @@ class MainActivity : Activity() {
         info.addView(nextCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10); setMargins(dp(16), dp(10), dp(16), 0) })
         info.addView(verse, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(16), dp(16), 0) })
 
+        // Optional picture behind the prayer list (Settings > Appearance > Prayer list background).
+        val listBox = FrameLayout(this)
+        val listImage = prefs.getString("listImage", "") ?: ""
+        if (listImage.isNotEmpty()) {
+            fun rounded(c: Int) = GradientDrawable().apply { setColor(c); cornerRadius = dp(26).toFloat() }
+            listBox.addView(ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP; background = rounded(Color.BLACK); clipToOutline = true
+                Config.loadImage(this@MainActivity, listImage, this)
+            }, FrameLayout.LayoutParams(-1, -1))
+            listBox.addView(View(this).apply { background = rounded(Color.argb(prefs.getInt("listDim", 40) * 255 / 100, 0, 0, 0)) },
+                FrameLayout.LayoutParams(-1, -1))
+        }
+        listBox.addView(table, FrameLayout.LayoutParams(-1, -1))
         fun lp(w: Float) = (if (portrait) LinearLayout.LayoutParams(-1, 0, w) else LinearLayout.LayoutParams(0, -1, w))
         if (portrait) {
             main.addView(info, lp(1f))
-            main.addView(table, lp(1.25f).apply { topMargin = dp(12) })
+            main.addView(listBox, lp(1.25f).apply { topMargin = dp(12) })
         } else {
-            main.addView(table, lp(0.9f).apply { marginEnd = dp(16) })
+            main.addView(listBox, lp(0.9f).apply { marginEnd = dp(16) })
             main.addView(info, lp(1.2f))
         }
         updateTile()

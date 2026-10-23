@@ -63,17 +63,22 @@ object Config {
                     val c = Config.presets[v.removePrefix("preset:").toInt().coerceIn(0, Config.presets.size - 1)].colors
                     iv.setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c))
                 }
-                v.startsWith("uri:") -> {
-                    val uri = android.net.Uri.parse(v.removePrefix("uri:"))
-                    val b = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    ctx.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, b) }
-                    var sample = 1
-                    while (b.outWidth / sample > 2000) sample *= 2
-                    val o = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-                    ctx.contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(android.graphics.BitmapFactory.decodeStream(it, null, o)) }
-                }
+                v.startsWith("uri:") -> loadImage(ctx, v.removePrefix("uri:"), iv)
             }
         } catch (_: Exception) { /* image gone or unreadable: fall back to the plain colour */ }
+    }
+
+    /** Loads a user image (content uri) into [iv], scaled down to at most ~2000 px wide. */
+    fun loadImage(ctx: android.content.Context, uriString: String, iv: android.widget.ImageView) {
+        try {
+            val uri = android.net.Uri.parse(uriString)
+            val b = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            ctx.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, b) }
+            var sample = 1
+            while (b.outWidth / sample > 2000) sample *= 2
+            val o = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            ctx.contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(android.graphics.BitmapFactory.decodeStream(it, null, o)) }
+        } catch (_: Exception) { }
     }
 
 
