@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Settings: new **display mode** (full / times only) hides the dates, clock and countdown so only the prayer table shows.
+- Settings: new **adhan choice**. Every `res/raw/adhan.*` and `adhan_2`, `adhan_3`, ... file is listed as "الأذان 1, 2, ..."; picking one previews it.
 - Removed the Iqama (الإقامة) column from the prayer table.
 - While the adhan is playing, OK / Back / Stop / Play-Pause on the remote stops the sound.
 - Added the adhan audio as `app/src/main/res/raw/adhan.mp3` (supplied by the repo owner); the app now plays it instead of the fallback chime.

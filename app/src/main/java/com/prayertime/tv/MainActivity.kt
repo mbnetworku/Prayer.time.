@@ -41,6 +41,7 @@ class MainActivity : Activity() {
         "وَأَقِيمُوا الصَّلَاةَ وَآتُوا الزَّكَاةَ",
         "قال ﷺ : من حسن إسلام المرء تركه ما لا يعنيه")
 
+    private lateinit var info: LinearLayout
     private lateinit var title: TextView
     private lateinit var hijri: TextView
     private lateinit var greg: TextView
@@ -61,6 +62,8 @@ class MainActivity : Activity() {
     private val region get() = Regions.all[prefs.getInt("region", 0).coerceIn(0, Regions.all.size - 1)]
     private val use24 get() = prefs.getBoolean("h24", false)
     private val soundOn get() = prefs.getBoolean("sound", true)
+    private val timesOnly get() = prefs.getBoolean("timesOnly", false)
+    private val azan get() = prefs.getString("azan", "adhan") ?: "adhan"
     private val hijriAdj get() = prefs.getInt("hijriAdj", 0)
 
     override fun onCreate(b: Bundle?) {
@@ -115,7 +118,7 @@ class MainActivity : Activity() {
         root.addView(table, LinearLayout.LayoutParams(0, -1, 1f))
 
         // Left side: title, dates, clock, countdown, verse.
-        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         title = tv(34f, true); hijri = tv(26f); greg = tv(22f)
         clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         countdown = tv(26f)
@@ -168,6 +171,7 @@ class MainActivity : Activity() {
     private val ticker = object : Runnable {
         override fun run() {
             val now = ZonedDateTime.now(ZoneId.of(region.zone))
+            info.visibility = if (timesOnly) View.GONE else View.VISIBLE
             if (cachedDate != now.toLocalDate() || cachedRegion != prefs.getInt("region", 0)) load(now)
             clock.text = String.format(Locale.US, "%s:%02d", hm(now.hour + now.minute / 60.0), now.second)
 
@@ -190,7 +194,7 @@ class MainActivity : Activity() {
                 val key = "${now.toLocalDate()}-$i"
                 if (since in 0..30 && key != lastFired) {
                     lastFired = key
-                    if (soundOn) adhan.play()
+                    if (soundOn) playAzan()
                 }
             }
             if (tick++ % 30 == 0) verse.text = verses[(tick / 30) % verses.size]
@@ -210,23 +214,45 @@ class MainActivity : Activity() {
         return super.onKeyDown(keyCode, e)
     }
 
+    /** Adhan files are the raw resources named adhan, adhan_2, adhan_3, ... */
+    private fun azanOptions(): List<String> =
+        R.raw::class.java.fields.map { it.name }.filter { it == "adhan" || it.startsWith("adhan_") }.sorted()
+
+    private fun azanLabel(name: String) = "الأذان " + (azanOptions().indexOf(name) + 1)
+
+    private fun playAzan() = adhan.play(if (azan in azanOptions()) azan else "adhan")
+
     private fun showSettings() {
         val items = arrayOf(
             "المنطقة: " + region.nameAr,
+            "اختيار الأذان: " + azanLabel(azan),
             "صوت الأذان: " + if (soundOn) "مفعل" else "متوقف",
+            "العرض: " + if (timesOnly) "المواقيت فقط" else "كامل",
             "نظام الساعة: " + if (use24) "24 ساعة" else "12 ساعة",
             "تعديل التاريخ الهجري: " + hijriAdj,
             "تجربة الصوت")
         AlertDialog.Builder(this).setTitle("الإعدادات").setItems(items) { _, w ->
             when (w) {
                 0 -> pickRegion()
-                1 -> prefs.edit().putBoolean("sound", !soundOn).apply()
-                2 -> prefs.edit().putBoolean("h24", !use24).apply()
-                3 -> prefs.edit().putInt("hijriAdj", if (hijriAdj >= 1) -1 else hijriAdj + 1).apply()
-                4 -> adhan.play()
+                1 -> pickAzan()
+                2 -> prefs.edit().putBoolean("sound", !soundOn).apply()
+                3 -> prefs.edit().putBoolean("timesOnly", !timesOnly).apply()
+                4 -> prefs.edit().putBoolean("h24", !use24).apply()
+                5 -> prefs.edit().putInt("hijriAdj", if (hijriAdj >= 1) -1 else hijriAdj + 1).apply()
+                6 -> playAzan()
             }
-            if (w in 1..3) { cachedDate = null; showSettings() }
+            if (w in 2..5) { cachedDate = null; showSettings() }
         }.show()
+    }
+
+    private fun pickAzan() {
+        val opts = azanOptions()
+        AlertDialog.Builder(this).setTitle("اختر الأذان")
+            .setSingleChoiceItems(opts.map { azanLabel(it) }.toTypedArray(),
+                opts.indexOf(azan).coerceAtLeast(0)) { d, w ->
+                prefs.edit().putString("azan", opts[w]).apply(); d.dismiss()
+                playAzan() // preview the selection
+            }.show()
     }
 
     private fun pickRegion() {

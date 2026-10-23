@@ -16,10 +16,10 @@ class AdhanPlayer(private val ctx: Context) {
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
 
-    fun play() {
+    fun play(resName: String = "adhan") {
         stop()
         playing = true
-        val id = ctx.resources.getIdentifier("adhan", "raw", ctx.packageName)
+        val id = ctx.resources.getIdentifier(resName, "raw", ctx.packageName)
         if (id != 0) {
             try {
                 player = MediaPlayer.create(ctx, id)?.apply {

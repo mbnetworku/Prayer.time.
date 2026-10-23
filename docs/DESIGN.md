@@ -6,3 +6,4 @@
 - `MainActivity.kt` - UI built in code (RTL layout), 1-second ticker, adhan trigger (within 30 s after the prayer time, once per prayer), settings dialogs. Preferences are stored in SharedPreferences `prayer`.
 - The Iqama column was removed from the table (v1.1).
 - Digits are always formatted with `Locale.US` so they stay 0-9.
+- Display mode `timesOnly` (pref) hides the left info panel. Adhan choice (pref `azan`) is the name of a raw resource: `adhan` or `adhan_*`, found by reflection on `R.raw`.
