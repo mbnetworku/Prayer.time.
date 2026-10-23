@@ -31,8 +31,6 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.chrono.HijrahDate
-import java.time.temporal.ChronoField
 import java.util.Locale
 import java.util.TimeZone
 
@@ -244,10 +242,9 @@ class MainActivity : Activity() {
         cachedDate = d; cachedRegion = prefs.getInt("region", 0)
 
         names2 = names
-        val hd = HijrahDate.from(d.plusDays(hijriAdj.toLong()))
+        val hd = Hijri.of(d.plusDays(hijriAdj.toLong()))
         title.text = "مواقيت الصلاة - " + r.nameAr.substringBefore(" - ")
-        hijri.text = "${days[d.dayOfWeek.value]} ${hd.get(ChronoField.DAY_OF_MONTH)} " +
-            "${hijriMonths[hd.get(ChronoField.MONTH_OF_YEAR) - 1]} ${hd.get(ChronoField.YEAR)}"
+        hijri.text = "${days[d.dayOfWeek.value]} ${hd[2]} ${hijriMonths[(hd[1] - 1).coerceIn(0, 11)]} ${hd[0]}"
         greg.text = String.format(Locale.US, "%02d/%02d/%d", d.dayOfMonth, d.monthValue, d.year)
         rows[3].visibility = if (friday) View.VISIBLE else View.GONE
         for (i in names.indices) {

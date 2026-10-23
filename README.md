@@ -1,5 +1,7 @@
 # Prayer Time TV (Android TV)
 
+Works on **Android 5.0 and newer** (TV boxes, TVs and phones), fully offline.
+
 Landscape prayer-times display: Arabic text, English (0-9) digits, adhan sound, region picker, offline calculation.
 
 - Press **OK / Menu** on the remote to open settings (region, adhan on/off, 12/24h, Hijri adjust, test sound).
