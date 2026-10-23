@@ -38,7 +38,7 @@ class SettingsActivity : Activity() {
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
-        adhan = AdhanPlayer(this)
+        adhan = AdhanPlayer.get(this)
         Config.applyOrientation(this)
         setContentView(build())
     }
@@ -50,8 +50,6 @@ class SettingsActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
     }
 
-    override fun onPause() { adhan.stop(); super.onPause() }
-    override fun onDestroy() { adhan.stop(); super.onDestroy() }
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
     private fun edit(f: SharedPreferences.Editor.() -> Unit) { prefs.edit().apply(f).apply() }
@@ -387,6 +385,7 @@ class SettingsActivity : Activity() {
         wide(body, button(t("اختيار ملف صوت من الجهاز…", "Choose an audio file from the device…")) {
             pickFile("audio/*", reqAudio)
         })
+        wide(body, button(t("إيقاف مؤقت / استئناف", "Pause / resume")) { adhan.togglePause() })
         wide(body, button(t("إيقاف الصوت", "Stop sound")) { adhan.stop() })
 
     }

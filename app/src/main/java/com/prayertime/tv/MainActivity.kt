@@ -102,7 +102,11 @@ class MainActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        adhan = AdhanPlayer(this)
+        adhan = AdhanPlayer.get(this)
+        // Phones (Android 13+): allow the adhan notification with Pause / Stop buttons.
+        if (Build.VERSION.SDK_INT >= 33 && !Config.isTv(this) &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 5)
         Config.applyOrientation(this)
         setContentView(buildUi())
     }
@@ -117,7 +121,6 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() { handler.removeCallbacks(ticker); super.onPause() }
-    override fun onDestroy() { adhan.stop(); super.onDestroy() }
 
     private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
         setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f * screenScale; gravity = Gravity.CENTER

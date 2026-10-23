@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Adhan notification** with **Pause / Resume** and **Stop** buttons (notification bar and lock screen) while the adhan plays; swiping it away stops the adhan. Android 13+ asks for notification permission once (phones only). The adhan length limit pauses with the adhan.
+- One shared adhan player for the whole app; leaving the settings screen no longer cuts off the sound (stop it with the notification, the Stop button, or OK on the remote). Settings > Adhan: new **Pause / resume** button.
 - **Home-screen widget** for phones/tablets: city, next prayer and today's six times on a glass background; refreshes after each prayer and when settings change; tap to open the app. Labels follow the device language.
 - **Orientation**: Settings > General > Screen orientation - **Auto** (TV detected -> landscape; phone/tablet -> follows the device), **Landscape (TV)** or **Portrait**.
 - Portrait layout: clock panel on top, prayer table below; text scales to the screen size (phones get smaller text, 1080p TV unchanged). Settings in portrait show the menu as a row at the top.

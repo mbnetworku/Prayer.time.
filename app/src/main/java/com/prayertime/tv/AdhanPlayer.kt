@@ -8,14 +8,35 @@ import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 
 /**
- * Plays res/raw/adhan.(mp3|ogg|wav) if the file was added to the project,
- * otherwise falls back to a short chime so there is always a sound.
+ * One adhan player for the whole app (screens and notification buttons share it).
+ * Plays res/raw/adhan* or a file chosen by the user; falls back to a short chime.
+ * While a recording plays, a notification offers Pause/Resume and Stop.
  */
-class AdhanPlayer(private val ctx: Context) {
+class AdhanPlayer private constructor(private val ctx: Context) {
+    companion object {
+        @Volatile private var instance: AdhanPlayer? = null
+        fun get(ctx: Context): AdhanPlayer = instance ?: synchronized(this) {
+            instance ?: AdhanPlayer(ctx.applicationContext).also { instance = it }
+        }
+    }
+
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var playing = false
+    private val limitStop = Runnable { stop() }
+    private var limitEnd = 0L   // elapsedRealtime when the length limit stops the adhan (0 = no limit)
+    private var limitLeft = 0L  // remaining limit while paused
+
+    val isPlaying get() = playing
+    var isPaused = false
+        private set
+
+    private fun attributes() = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
 
     fun play(resName: String = "adhan") {
         stop()
@@ -24,15 +45,11 @@ class AdhanPlayer(private val ctx: Context) {
         if (id != 0) {
             try {
                 player = MediaPlayer.create(ctx, id)?.apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-                    )
+                    setAudioAttributes(attributes())
                     setOnCompletionListener { stop() }
                     start()
                 }
-                if (player != null) { limitLength(); return }
+                if (player != null) { started(); return }
             } catch (_: Exception) { }
         }
         chime()
@@ -53,17 +70,13 @@ class AdhanPlayer(private val ctx: Context) {
         playing = true
         try {
             player = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-                )
+                setAudioAttributes(attributes())
                 setDataSource(ctx, uri)
                 setOnCompletionListener { stop() }
                 prepare()
                 start()
             }
-            limitLength()
+            started()
             return
         } catch (_: Exception) {
             player?.release(); player = null
@@ -71,11 +84,40 @@ class AdhanPlayer(private val ctx: Context) {
         chime()
     }
 
-    /** Stops the adhan after the length chosen in settings (pref azanLen, seconds; 0 = full adhan). */
-    private fun limitLength() {
+    /** Length limit (pref azanLen, seconds; 0 = full adhan) + notification with controls. */
+    private fun started() {
         val sec = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getInt("azanLen", 0)
-        if (sec > 0) handler.postDelayed({ stop() }, sec * 1000L)
+        if (sec > 0) {
+            limitEnd = SystemClock.elapsedRealtime() + sec * 1000L
+            handler.postDelayed(limitStop, sec * 1000L)
+        }
+        AdhanNotification.show(ctx, paused = false)
     }
+
+    fun pause() {
+        val p = player
+        if (p == null || !playing) { AdhanNotification.cancel(ctx); return }
+        if (isPaused) return
+        try { p.pause() } catch (_: Exception) { }
+        isPaused = true
+        if (limitEnd > 0) { limitLeft = limitEnd - SystemClock.elapsedRealtime(); handler.removeCallbacks(limitStop) }
+        AdhanNotification.show(ctx, paused = true)
+    }
+
+    fun resume() {
+        val p = player
+        if (p == null || !playing) { AdhanNotification.cancel(ctx); return }
+        if (!isPaused) return
+        try { p.start() } catch (_: Exception) { stop(); return }
+        isPaused = false
+        if (limitEnd > 0) {
+            limitEnd = SystemClock.elapsedRealtime() + limitLeft
+            handler.postDelayed(limitStop, limitLeft.coerceAtLeast(0))
+        }
+        AdhanNotification.show(ctx, paused = false)
+    }
+
+    fun togglePause() = if (isPaused) resume() else pause()
 
     private fun chime() {
         val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
@@ -85,13 +127,13 @@ class AdhanPlayer(private val ctx: Context) {
         handler.postDelayed({ tone.release(); playing = false }, 6000L)
     }
 
-    val isPlaying get() = playing
-    private var playing = false
-
     fun stop() {
         playing = false
+        isPaused = false
+        limitEnd = 0L
         handler.removeCallbacksAndMessages(null)
         player?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
         player = null
+        AdhanNotification.cancel(ctx)
     }
 }
