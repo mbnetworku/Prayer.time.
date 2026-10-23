@@ -5,14 +5,21 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -20,7 +27,11 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 
-/** One screen with every setting. Works with mouse, touch and remote. Language: Arabic / English. */
+/**
+ * Settings: one full screen in an iOS-like style - side menu with coloured icons, large page title,
+ * options grouped in (glass) cards with dividers. Works with mouse, touch and remote (focused items
+ * get a blue outline). Language: Arabic / English.
+ */
 class SettingsActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("prayer", Context.MODE_PRIVATE) }
     private lateinit var adhan: AdhanPlayer
@@ -30,11 +41,14 @@ class SettingsActivity : Activity() {
     private fun t(ar: String, en: String) = if (isAr) ar else en
 
     private val pageBg = Color.parseColor("#0E1116")
-    private val cardBg = Color.parseColor("#171C24")
-    private val accent = Config.defText
+    private val cardBg = Color.parseColor("#1C1F26")
+    private val blue = Color.parseColor("#0A84FF")
+    private val red = Color.parseColor("#FF453A")
+    private val secondary = Color.argb(165, 255, 255, 255)
     private val reqImage = 21
     private val reqAudio = 22
     private lateinit var azanBox: LinearLayout
+    private var card: LinearLayout? = null // the group card new items are added to
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -50,130 +64,195 @@ class SettingsActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
     }
 
-
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
     private fun edit(f: SharedPreferences.Editor.() -> Unit) { prefs.edit().apply(f).apply() }
+    private fun lp(w: Int, h: Int, weight: Float = 0f) = LinearLayout.LayoutParams(w, h, weight)
 
     private val glassOn get() = prefs.getBoolean("glass", true)
     private val density get() = resources.displayMetrics.density
+    private val portrait get() = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-    /** Card / panel background: glass or flat. */
-    private fun panel() = if (glassOn) Config.glass(density, 14) else round(cardBg)
+    // ---- drawing helpers -------------------------------------------------------------------
 
-    /** Chip / button background; selected = accent tinted. */
-    private fun chip(selected: Boolean) = when {
-        glassOn -> Config.glass(density, 14, if (selected) Color.parseColor("#2A5FA8") else null)
-        selected -> round(Color.parseColor("#2A5FA8"))
-        else -> round(Color.parseColor("#232A35"))
+    private fun rounded(color: Int, radiusDp: Int, stroke: Int = 0) = GradientDrawable().apply {
+        setColor(color); cornerRadius = dp(radiusDp).toFloat()
+        if (stroke != 0) setStroke(dp(1).coerceAtLeast(1), stroke)
     }
 
-    private fun round(c: Int) = GradientDrawable().apply { setColor(c); cornerRadius = dp(10).toFloat() }
+    private fun cardBackground() = if (glassOn) Config.glass(density, 18) else rounded(cardBg, 18)
+
+    /** Background with a clear blue outline when the item has remote focus or is pressed. */
+    private fun focusable(normal: Drawable?, radiusDp: Int): Drawable = StateListDrawable().apply {
+        val hi = GradientDrawable().apply {
+            setColor(Color.argb(70, 10, 132, 255)); cornerRadius = dp(radiusDp).toFloat(); setStroke(dp(2), blue)
+        }
+        addState(intArrayOf(android.R.attr.state_pressed), hi)
+        addState(intArrayOf(android.R.attr.state_focused), hi)
+        addState(intArrayOf(), normal ?: ColorDrawable(Color.TRANSPARENT))
+    }
+
+    private fun pill(selected: Boolean) = focusable(
+        if (selected) rounded(blue, 20) else rounded(Color.argb(30, 255, 255, 255), 20, Color.argb(40, 255, 255, 255)), 20)
 
     private fun text(s: String, size: Float, bold: Boolean = false, c: Int = Color.WHITE) = TextView(this).apply {
         text = s; textSize = size; setTextColor(c)
-        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
-    private fun button(label: String, onClick: () -> Unit) = TextView(this).apply {
-        text = label; textSize = 17f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
-        setPadding(dp(20), dp(10), dp(20), dp(10))
-        background = chip(true)
-        isClickable = true; isFocusable = true
-        setOnClickListener { onClick() }
+    private fun tappable(v: View, radiusDp: Int, normal: Drawable?, onClick: () -> Unit) {
+        v.background = focusable(normal, radiusDp)
+        v.isClickable = true; v.isFocusable = true
+        v.setOnClickListener { onClick() }
     }
 
-    private fun section(body: LinearLayout, title: String) {
-        body.addView(text(title, 20f, true, accent),
-            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24) })
+    /** Small rounded button (− / + / Delete / Apply ...). */
+    private fun smallButton(label: String, color: Int = Color.argb(55, 255, 255, 255), onClick: () -> Unit) =
+        text(label, 17f, true).apply {
+            gravity = Gravity.CENTER; minWidth = dp(44); setPadding(dp(14), dp(8), dp(14), dp(8))
+            tappable(this, 20, rounded(color, 20), onClick)
+        }
+
+    private fun input(hintText: String) = EditText(this).apply {
+        hint = hintText; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
+        background = rounded(Color.argb(30, 255, 255, 255), 10, Color.argb(50, 255, 255, 255))
+        setPadding(dp(12), dp(10), dp(12), dp(10))
     }
 
-    private fun row(body: LinearLayout, label: String, control: View) {
+    // ---- page structure: large title + grouped cards ---------------------------------------
+
+    private fun pageTitle(body: LinearLayout, title: String, subtitle: String) {
+        body.addView(text(title, 30f, true), lp(-1, -2).apply { topMargin = dp(8) })
+        body.addView(text(subtitle, 14f, c = secondary), lp(-1, -2).apply { topMargin = dp(2) })
+    }
+
+    /** Starts a new card; the items added after this go inside it. */
+    private fun group(body: LinearLayout, header: String? = null) {
+        if (header != null) body.addView(text(header, 13f, true, secondary).apply { setPadding(dp(16), 0, dp(16), 0) },
+            lp(-1, -2).apply { topMargin = dp(22) })
+        val c = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; background = cardBackground(); setPadding(0, dp(4), 0, dp(4))
+        }
+        body.addView(c, lp(-1, -2).apply { topMargin = dp(if (header != null) 6 else 22) })
+        card = c
+    }
+
+    /** Adds a view to the current card, with a thin divider between items. */
+    private fun item(body: LinearLayout, v: View) {
+        val c = card ?: run { group(body); card!! }
+        if (c.childCount > 0) c.addView(View(this).apply { setBackgroundColor(Color.argb(38, 255, 255, 255)) },
+            lp(-1, 1).apply { marginStart = dp(16) })
+        c.addView(v, lp(-1, -2))
+    }
+
+    private fun labelColumn(label: String, sub: String?) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(text(label, 17f))
+        if (sub != null) addView(text(sub, 13f, c = secondary))
+    }
+
+    private fun row(body: LinearLayout, label: String, control: View?, sub: String? = null) {
         val r = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8)); background = panel()
+            minimumHeight = dp(52); setPadding(dp(16), dp(10), dp(16), dp(10))
         }
-        r.addView(text(label, 18f), LinearLayout.LayoutParams(0, -2, 1f))
-        r.addView(control)
-        body.addView(r, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        r.addView(labelColumn(label, sub), lp(0, -2, 1f))
+        if (control != null) r.addView(control)
+        item(body, r)
     }
 
-    private fun wide(body: LinearLayout, v: View) {
-        body.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
+    /** Full-width tappable action row (blue text, red for destructive actions). */
+    private fun action(body: LinearLayout, label: String, color: Int = blue, onClick: () -> Unit) {
+        val v = text(label, 17f, false, color).apply { setPadding(dp(16), dp(14), dp(16), dp(14)) }
+        tappable(v, 12, null, onClick)
+        item(body, v)
     }
 
-    /** Inline choice buttons (no drop-down / pop-up). The selected one is highlighted. */
+    private fun switchOf(key: String, def: Boolean, onChange: ((Boolean) -> Unit)? = null) = Switch(this).apply {
+        isChecked = prefs.getBoolean(key, def)
+        if (Build.VERSION.SDK_INT >= 23) {
+            val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+            thumbTintList = ColorStateList(states, intArrayOf(Color.WHITE, Color.parseColor("#D1D1D6")))
+            trackTintList = ColorStateList(states, intArrayOf(Color.parseColor("#34C759"), Color.parseColor("#636366")))
+        }
+        setOnCheckedChangeListener { _, c -> edit { putBoolean(key, c) }; onChange?.invoke(c) }
+    }
+
+    /** Pill choices (no drop-down / pop-up). The selected one is filled blue. */
     private fun fillChips(box: LinearLayout, items: List<String>, selected: () -> Int, perRow: Int, onPick: (Int) -> Unit) {
         box.removeAllViews()
         val views = ArrayList<TextView>()
         fun paint() {
             val sel = selected()
-            views.forEachIndexed { i, v ->
-                v.background = chip(i == sel)
-            }
+            views.forEachIndexed { i, v -> v.background = pill(i == sel) }
         }
         items.chunked(perRow).forEachIndexed { r, chunk ->
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             chunk.forEachIndexed { k, label ->
                 val idx = r * perRow + k
-                val v = TextView(this).apply {
-                    text = label; textSize = 16f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
-                    setPadding(dp(10), dp(12), dp(10), dp(12))
+                val v = text(label, 15f, true).apply {
+                    gravity = Gravity.CENTER; maxLines = 2; setPadding(dp(8), dp(10), dp(8), dp(10))
                     isClickable = true; isFocusable = true
                     setOnClickListener { onPick(idx); paint() }
                 }
                 views += v
-                line.addView(v, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
+                line.addView(v, lp(0, -2, 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
             }
-            repeat(perRow - chunk.size) { line.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f)) }
-            box.addView(line)
+            repeat(perRow - chunk.size) { line.addView(View(this), lp(0, 1, 1f)) }
+            box.addView(line, lp(-1, -2))
         }
         paint()
     }
 
-    /** Inline drop-down: shows the current value; clicking opens the list inside the page (no pop-up). */
+    /** Label + pill choices inside the current card. Returns the box so it can be refilled. */
+    private fun choices(body: LinearLayout, label: String, items: List<String>, perRow: Int,
+                        selected: () -> Int, sub: String? = null, onPick: (Int) -> Unit): LinearLayout {
+        val c = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(12)) }
+        c.addView(labelColumn(label, sub))
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        c.addView(box, lp(-1, -2).apply { topMargin = dp(8) })
+        fillChips(box, items, selected, perRow, onPick)
+        item(body, c)
+        return box
+    }
+
+    /** Row showing the current value; tapping opens the list inside the card (no pop-up). */
     private fun dropdown(body: LinearLayout, label: String, items: List<String>,
                          selected: () -> Int, onPick: (Int) -> Unit) {
-        body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        val head = TextView(this).apply {
-            textSize = 17f; setTextColor(Color.WHITE); setPadding(dp(16), dp(12), dp(16), dp(12))
-            background = chip(false); isClickable = true; isFocusable = true
+        val c = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(52); setPadding(dp(16), dp(10), dp(16), dp(10))
         }
-        fun refresh() { head.text = items[selected().coerceIn(0, items.size - 1)] + "   ▼" }
+        head.addView(text(label, 17f), lp(0, -2, 1f))
+        val value = text("", 16f, c = secondary)
+        val arrow = text("  ▼", 12f, c = secondary)
+        head.addView(value); head.addView(arrow)
+        fun refresh() { value.text = items[selected().coerceIn(0, items.size - 1)] }
         refresh()
         val list = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; visibility = View.GONE
-            background = panel(); setPadding(dp(8), dp(8), dp(8), dp(8))
+            orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(dp(8), 0, dp(8), dp(8))
         }
         val views = ArrayList<TextView>()
         fun paint() {
             val sel = selected()
-            views.forEachIndexed { i, v -> v.background = if (i == sel) chip(true) else null }
+            views.forEachIndexed { i, v -> v.background = focusable(if (i == sel) rounded(blue, 12) else null, 12) }
         }
-        items.forEachIndexed { i, label2 ->
-            val v = TextView(this).apply {
-                text = label2; textSize = 16f; setTextColor(Color.WHITE)
+        items.forEachIndexed { i, s ->
+            val v = text(s, 16f).apply {
                 setPadding(dp(16), dp(10), dp(16), dp(10)); isClickable = true; isFocusable = true
-                setOnClickListener { onPick(i); refresh(); list.visibility = View.GONE }
+                setOnClickListener { onPick(i); refresh(); list.visibility = View.GONE; arrow.text = "  ▼" }
             }
             views += v
-            list.addView(v, LinearLayout.LayoutParams(-1, -2))
+            list.addView(v, lp(-1, -2))
         }
-        head.setOnClickListener { paint(); list.visibility = if (list.visibility == View.GONE) View.VISIBLE else View.GONE }
-        body.addView(head, LinearLayout.LayoutParams(-1, -2))
-        body.addView(list, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-    }
-
-    private fun chipGroup(body: LinearLayout, label: String, items: List<String>, perRow: Int,
-                          selected: () -> Int, onPick: (Int) -> Unit) {
-        body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fillChips(box, items, selected, perRow, onPick)
-        body.addView(box, LinearLayout.LayoutParams(-1, -2))
-    }
-
-    private fun switchOf(key: String, def: Boolean) = Switch(this).apply {
-        isChecked = prefs.getBoolean(key, def)
-        setOnCheckedChangeListener { _, c -> edit { putBoolean(key, c) } }
+        tappable(head, 12, null) {
+            paint()
+            val open = list.visibility == View.GONE
+            list.visibility = if (open) View.VISIBLE else View.GONE
+            arrow.text = if (open) "  ▲" else "  ▼"
+        }
+        c.addView(head, lp(-1, -2)); c.addView(list, lp(-1, -2))
+        item(body, c)
     }
 
     // ---- adhan choices -------------------------------------------------------------------
@@ -185,92 +264,139 @@ class SettingsActivity : Activity() {
     }
 
     private fun currentAzan() = prefs.getString("azan", "adhan") ?: "adhan"
-
-    private fun fillAzan() {
-        fillChips(azanBox, azanItems().map { it.first },
-            { azanItems().indexOfFirst { it.second == currentAzan() }.coerceAtLeast(0) }, 3) { pos ->
-            val v = azanItems().getOrNull(pos)?.second
-            if (v != null) { edit { putString("azan", v) }; adhan.playSelected() }
-        }
+    private fun azanSelected() = azanItems().indexOfFirst { it.second == currentAzan() }.coerceAtLeast(0)
+    private fun azanPicked(pos: Int) {
+        val v = azanItems().getOrNull(pos)?.second
+        if (v != null) { edit { putString("azan", v) }; adhan.playSelected() }
     }
 
-    // ---- the page --------------------------------------------------------------------------
+    private fun fillAzan() = fillChips(azanBox, azanItems().map { it.first }, ::azanSelected, if (portrait) 2 else 3, ::azanPicked)
+
+    // ---- the screen ------------------------------------------------------------------------
 
     private var tab: Int
         get() = prefs.getInt("settingsTab", 0)
         set(v) { edit { putInt("settingsTab", v) } }
 
-    /** Full fresh screen: header, side menu with categories, and the selected category's page. */
+    private class Tab(val title: String, val sub: String, val icon: Int, val color: Int, val page: (LinearLayout) -> Unit)
+
     private fun build(): View {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = if (glassOn) Config.glassBackground() else ColorDrawable(pageBg)
             layoutDirection = if (isAr) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         }
-        val header = LinearLayout(this).apply {
+
+        // Top bar: back button + "Settings".
+        val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(24), dp(12), dp(24), dp(12))
-            background = if (glassOn) Config.glass(density, 0) else ColorDrawable(cardBg)
+            setPadding(dp(20), dp(14), dp(20), dp(6))
         }
-        header.addView(button(t("رجوع", "Back")) { finish() })
-        header.addView(text(t("الإعدادات", "Settings"), 26f, true).apply { gravity = Gravity.CENTER },
-            LinearLayout.LayoutParams(0, -2, 1f))
-        header.addView(View(this), LinearLayout.LayoutParams(dp(80), 1))
-        page.addView(header, LinearLayout.LayoutParams(-1, -2))
+        val back = text((if (isAr) "›  " else "‹  ") + t("رجوع", "Back"), 17f, true).apply {
+            setPadding(dp(16), dp(8), dp(18), dp(8))
+        }
+        tappable(back, 20, rounded(Color.argb(40, 255, 255, 255), 20, Color.argb(50, 255, 255, 255))) { finish() }
+        top.addView(back)
+        top.addView(text(t("الإعدادات", "Settings"), 20f, true).apply { gravity = Gravity.CENTER }, lp(0, -2, 1f))
+        top.addView(View(this), lp(dp(90), 1))
+        page.addView(top, lp(-1, -2))
 
-        // Landscape: side menu. Portrait (phone): menu as a scrollable row at the top.
-        val portrait = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
-        val main = LinearLayout(this).apply { orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL }
-        page.addView(main, LinearLayout.LayoutParams(-1, 0, 1f))
-
+        // Landscape: side menu card. Portrait (phone): scrollable row of menu items at the top.
+        val main = LinearLayout(this).apply {
+            orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        }
+        page.addView(main, lp(-1, 0, 1f))
         val menu = LinearLayout(this).apply {
             orientation = if (portrait) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
-            setPadding(dp(12), dp(if (portrait) 8 else 16), dp(12), dp(if (portrait) 8 else 16))
-            background = if (glassOn) Config.glass(density, 0) else ColorDrawable(cardBg)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            if (!portrait) background = cardBackground()
         }
-        if (portrait) main.addView(HorizontalScrollView(this).apply { addView(menu) }, LinearLayout.LayoutParams(-1, -2))
-        else main.addView(menu, LinearLayout.LayoutParams(dp(220), -1))
+        if (portrait) main.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(menu) }, lp(-1, -2))
+        else main.addView(ScrollView(this).apply { addView(menu) }, lp(dp(270), -1).apply { setMargins(dp(16), dp(8), dp(4), dp(16)) })
 
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(if (portrait) 12 else 32), dp(8), dp(if (portrait) 12 else 32), dp(40))
+            setPadding(dp(if (portrait) 14 else 28), dp(8), dp(if (portrait) 14 else 28), dp(40))
         }
         val scroll = ScrollView(this).apply { addView(body) }
-        main.addView(scroll, if (portrait) LinearLayout.LayoutParams(-1, 0, 1f) else LinearLayout.LayoutParams(0, -1, 1f))
+        main.addView(scroll, if (portrait) lp(-1, 0, 1f) else lp(0, -1, 1f))
 
         val tabs = listOf(
-            t("عام", "General") to { b: LinearLayout -> pageGeneral(b) },
-            t("تعديل المواقيت", "Adjust times") to { b: LinearLayout -> pageAdjust(b) },
-            t("الأذان", "Adhan") to { b: LinearLayout -> pageAdhan(b) },
-            t("المظهر", "Appearance") to { b: LinearLayout -> pageAppearance(b) },
-            t("الأدعية والرسائل", "Duas & messages") to { b: LinearLayout -> pageTiles(b) },
-            t("اللغة", "Language") to { b: LinearLayout -> pageLanguage(b) })
-        val items = ArrayList<TextView>()
+            Tab(t("عام", "General"), t("المنطقة والساعة والعرض", "Region, clock and display"),
+                R.drawable.ic_set_general, Color.parseColor("#8E8E93")) { pageGeneral(it) },
+            Tab(t("تعديل المواقيت", "Adjust times"), t("تقديم أو تأخير أي صلاة بالدقائق", "Move any prayer earlier or later"),
+                R.drawable.ic_set_time, Color.parseColor("#FF9F0A")) { pageAdjust(it) },
+            Tab(t("الأذان", "Adhan"), t("الصوت والمدة والاختيار", "Sound, length and choice"),
+                R.drawable.ic_set_adhan, Color.parseColor("#30D158")) { pageAdhan(it) },
+            Tab(t("المظهر", "Appearance"), t("النمط والألوان والخلفية والخط", "Style, colors, wallpaper and text"),
+                R.drawable.ic_set_appearance, Color.parseColor("#BF5AF2")) { pageAppearance(it) },
+            Tab(t("الأدعية والرسائل", "Duas & messages"), t("البطاقة المتغيرة على الشاشة", "The rotating card on screen"),
+                R.drawable.ic_set_duas, Color.parseColor("#5AC8FA")) { pageTiles(it) },
+            Tab(t("اللغة", "Language"), t("لغة شاشة الإعدادات", "Language of the settings screen"),
+                R.drawable.ic_set_language, blue) { pageLanguage(it) })
+
+        val items = ArrayList<View>()
         fun show(i: Int) {
             tab = i
-            items.forEachIndexed { k, v -> v.background = if (k == i) chip(true) else null }
-            body.removeAllViews(); adhan.stop()
-            tabs[i].second(body)
+            items.forEachIndexed { k, v ->
+                v.background = focusable(if (k == i) rounded(Color.argb(55, 255, 255, 255), 14) else null, 14)
+            }
+            body.removeAllViews(); card = null
+            pageTitle(body, tabs[i].title, tabs[i].sub)
+            tabs[i].page(body)
             scroll.scrollTo(0, 0)
         }
-        tabs.forEachIndexed { i, (label, _) ->
-            val v = text(label, 19f, true).apply {
-                setPadding(dp(16), dp(14), dp(16), dp(14)); isClickable = true; isFocusable = true
+        tabs.forEachIndexed { i, tb ->
+            val v = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(10), dp(9), dp(14), dp(9))
+                isClickable = true; isFocusable = true
                 setOnClickListener { show(i) }
             }
+            v.addView(ImageView(this).apply {
+                setImageResource(tb.icon); background = rounded(tb.color, 9); setPadding(dp(6), dp(6), dp(6), dp(6))
+            }, lp(dp(34), dp(34)))
+            v.addView(text(tb.title, 16f, true), lp(-2, -2).apply { marginStart = dp(12) })
             items += v
-            menu.addView(v, if (portrait) LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(6) }
-                else LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+            menu.addView(v, if (portrait) lp(-2, -2).apply { marginEnd = dp(6) } else lp(-1, -2).apply { bottomMargin = dp(4) })
         }
         show(tab.coerceIn(0, tabs.size - 1))
         return page
     }
 
+    // ---- pages -----------------------------------------------------------------------------
+
+    private fun pageGeneral(body: LinearLayout) {
+        group(body, t("الموقع", "Location"))
+        dropdown(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn },
+            { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
+
+        group(body, t("الساعة", "Clock"))
+        row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
+        val ampm = listOf("short", "full", "none")
+        choices(body, t("صباحاً / مساءً", "AM / PM label"), listOf("ص / م", "صباحاً / مساءً", t("بدون", "None")), 3,
+            { ampm.indexOf(prefs.getString("ampm", "short")).coerceAtLeast(0) },
+            t("في نظام 12 ساعة", "With the 12-hour clock")) { pos -> edit { putString("ampm", ampm[pos]) } }
+        choices(body, t("تعديل التاريخ الهجري", "Hijri date adjustment"), listOf("-1", "0", "+1"), 3,
+            { prefs.getInt("hijriAdj", 0) + 1 },
+            t("إذا كان التاريخ الهجري يختلف بيوم", "If the Hijri date is a day off")) { pos -> edit { putInt("hijriAdj", pos - 1) } }
+
+        group(body, t("الشاشة", "Display"))
+        val modes = listOf("auto", "landscape", "portrait")
+        choices(body, t("اتجاه الشاشة", "Screen orientation"),
+            listOf(t("تلقائي", "Auto"), t("أفقي (تلفاز)", "Landscape (TV)"), t("عمودي", "Portrait")), 3,
+            { modes.indexOf(prefs.getString("orientation", "auto")).coerceAtLeast(0) },
+            if (Config.isTv(this)) t("تم اكتشاف تلفاز", "TV detected") else null) { pos ->
+            edit { putString("orientation", modes[pos]) }
+            Config.applyOrientation(this)
+        }
+        row(body, t("عرض المواقيت فقط", "Prayer times only"), switchOf("timesOnly", false),
+            t("إخفاء التاريخ والساعة والرسائل", "Hide dates, clock and messages"))
+    }
+
     /** Shift each prayer by -60..+60 minutes when the calculated time differs from the local mosque. */
     private fun pageAdjust(body: LinearLayout) {
-        section(body, t("تعديل أوقات الصلاة (بالدقائق)", "Adjust prayer times (minutes)"))
-        body.addView(text(t("استخدم + و − لتقديم أو تأخير أي صلاة. الجمعة تتبع الظهر.",
-            "Use + and − to move a prayer earlier or later. Jumuah follows Dhuhr."), 15f, c = Color.GRAY))
+        group(body, t("الصلوات — الجمعة تتبع الظهر", "Prayers — Jumuah follows Dhuhr"))
         val names = listOf(t("الفجر", "Fajr"), t("الشروق", "Sunrise"), t("الظهر", "Dhuhr"),
             t("العصر", "Asr"), t("المغرب", "Maghrib"), t("العشاء", "Isha"))
         val labels = ArrayList<TextView>()
@@ -279,143 +405,69 @@ class SettingsActivity : Activity() {
             labels[i].text = (if (v > 0) "+" else "") + v + t(" د", " min")
         }
         names.forEachIndexed { i, name ->
-            val value = text("", 18f, true).apply { gravity = Gravity.CENTER; textDirection = View.TEXT_DIRECTION_LTR }
+            val value = text("", 17f, true).apply { gravity = Gravity.CENTER; textDirection = View.TEXT_DIRECTION_LTR }
             labels += value
             val box = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             fun step(d: Int) { edit { putInt("adj_$i", (prefs.getInt("adj_$i", 0) + d).coerceIn(-60, 60)) }; show(i) }
-            box.addView(button("−") { step(-1) })
-            box.addView(value, LinearLayout.LayoutParams(dp(110), -2))
-            box.addView(button("+") { step(1) })
+            box.addView(smallButton("−") { step(-1) })
+            box.addView(value, lp(dp(84), -2))
+            box.addView(smallButton("+") { step(1) })
             row(body, name, box)
             show(i)
         }
-        wide(body, button(t("إعادة كل التعديلات إلى 0", "Reset all adjustments to 0")) {
+        group(body)
+        action(body, t("إعادة كل التعديلات إلى 0", "Reset all adjustments to 0"), red) {
             edit { for (i in 0..5) remove("adj_$i") }
             names.indices.forEach { show(it) }
-        })
-    }
-
-    private fun pageTiles(body: LinearLayout) {
-        section(body, t("الأدعية والرسائل على الشاشة", "Duas & messages on screen"))
-        row(body, t("عرض الآيات والأدعية المدمجة", "Show built-in verses and duas"), switchOf("tilesBuiltin", true))
-        row(body, t("عرض دعاء ما بعد الأذان (5 دقائق)", "Show the after-adhan dua (5 minutes)"), switchOf("tileAfterAdhan", true))
-        val secs = listOf(10, 20, 30, 60)
-        chipGroup(body, t("مدة عرض كل رسالة", "Time per message"), secs.map { t("$it ثانية", "$it sec") }, 4,
-            { secs.indexOf(prefs.getInt("tileSeconds", 30)).coerceAtLeast(0) }) { pos ->
-            edit { putInt("tileSeconds", secs[pos]) }
         }
-
-        body.addView(text(t("رسائلك وأدعيتك", "Your messages and duas"), 18f),
-            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
-        val listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(listBox, LinearLayout.LayoutParams(-1, -2))
-        fun refresh() {
-            listBox.removeAllViews()
-            val items = Config.customTiles(prefs)
-            if (items.isEmpty()) listBox.addView(text(t("لا توجد رسائل بعد", "No messages yet"), 16f, c = Color.GRAY))
-            items.forEachIndexed { i, msg ->
-                val r = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(16), dp(8), dp(16), dp(8)); background = panel()
-                }
-                r.addView(text(msg, 17f), LinearLayout.LayoutParams(0, -2, 1f))
-                r.addView(button(t("حذف", "Delete")) {
-                    Config.saveTiles(prefs, items.filterIndexed { k, _ -> k != i }); refresh()
-                })
-                listBox.addView(r, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-            }
-        }
-        refresh()
-        val input = EditText(this).apply {
-            hint = t("اكتب دعاءً أو رسالة…", "Type a dua or message…")
-            setTextColor(Color.WHITE); setHintTextColor(Color.GRAY); minLines = 2
-        }
-        body.addView(input, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        wide(body, button(t("إضافة", "Add")) {
-            val msg = input.text.toString().trim()
-            if (msg.isNotEmpty()) { Config.saveTiles(prefs, Config.customTiles(prefs) + msg); input.setText(""); refresh() }
-        })
-    }
-
-    private fun pageLanguage(body: LinearLayout) {
-        section(body, t("اللغة", "Language"))
-        chipGroup(body, t("لغة الإعدادات", "Settings language"), listOf("العربية", "English"), 2,
-            { if (isAr) 0 else 1 }) { pos ->
-            val new = if (pos == 0) "ar" else "en"
-            if (new != lang) { edit { putString("lang", new) }; recreate() }
-        }
-
-    }
-
-    private fun pageGeneral(body: LinearLayout) {
-        section(body, t("عام", "General"))
-        dropdown(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn },
-            { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
-        val modes = listOf("auto", "landscape", "portrait")
-        val tvNote = if (Config.isTv(this)) t(" (تم اكتشاف تلفاز)", " (TV detected)") else ""
-        chipGroup(body, t("اتجاه الشاشة", "Screen orientation") + tvNote,
-            listOf(t("تلقائي", "Auto"), t("أفقي (تلفاز)", "Landscape (TV)"), t("عمودي", "Portrait")), 3,
-            { modes.indexOf(prefs.getString("orientation", "auto")).coerceAtLeast(0) }) { pos ->
-            edit { putString("orientation", modes[pos]) }
-            Config.applyOrientation(this)
-        }
-        row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
-        val ampm = listOf("full", "short", "none")
-        chipGroup(body, t("صباحاً / مساءً (نظام 12 ساعة)", "AM / PM label (12-hour clock)"),
-            listOf("صباحاً / مساءً", "ص / م", t("بدون", "None")), 3,
-            { ampm.indexOf(prefs.getString("ampm", "short")).coerceAtLeast(0) }) { pos ->
-            edit { putString("ampm", ampm[pos]) }
-        }
-        row(body, t("عرض المواقيت فقط (إخفاء التاريخ والساعة)", "Show prayer times only (hide dates and clock)"),
-            switchOf("timesOnly", false))
-        chipGroup(body, t("تعديل التاريخ الهجري (أيام)", "Hijri date adjustment (days)"), listOf("-1", "0", "+1"), 3,
-            { prefs.getInt("hijriAdj", 0) + 1 }) { pos -> edit { putInt("hijriAdj", pos - 1) } }
-
     }
 
     private fun pageAdhan(body: LinearLayout) {
-        section(body, t("الأذان", "Adhan"))
-        row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true))
+        group(body, t("التشغيل", "Playback"))
+        row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true),
+            t("عند دخول وقت كل صلاة", "At each prayer time"))
         val lengths = listOf(10, 30, 60, 120, 0)
-        chipGroup(body, t("مدة الأذان", "Adhan length"),
+        choices(body, t("مدة الأذان", "Adhan length"),
             listOf(t("10 ثوانٍ", "10 sec"), t("30 ثانية", "30 sec"), t("دقيقة", "1 min"),
-                t("دقيقتان", "2 min"), t("الأذان كاملاً", "Full adhan")), 5,
+                t("دقيقتان", "2 min"), t("كامل", "Full")), if (portrait) 3 else 5,
             { lengths.indexOf(prefs.getInt("azanLen", 0)).coerceAtLeast(0) }) { pos ->
             edit { putInt("azanLen", lengths[pos]) }
         }
-        body.addView(text(t("اختيار الأذان (اضغط للاستماع)", "Choose adhan (tap to listen)"), 18f),
-            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        azanBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(azanBox, LinearLayout.LayoutParams(-1, -2))
-        fillAzan()
-        wide(body, button(t("اختيار ملف صوت من الجهاز…", "Choose an audio file from the device…")) {
-            pickFile("audio/*", reqAudio)
-        })
-        wide(body, button(t("إيقاف مؤقت / استئناف", "Pause / resume")) { adhan.togglePause() })
-        wide(body, button(t("إيقاف الصوت", "Stop sound")) { adhan.stop() })
 
+        group(body, t("صوت الأذان", "Adhan voice"))
+        azanBox = choices(body, t("اختر الأذان", "Choose adhan"), azanItems().map { it.first },
+            if (portrait) 2 else 3, ::azanSelected, t("اضغط للاستماع", "Tap to listen"), ::azanPicked)
+        action(body, t("اختيار ملف صوت من الجهاز…", "Choose an audio file from the device…")) {
+            pickFile("audio/*", reqAudio)
+        }
+
+        group(body, t("تجربة", "Test"))
+        action(body, t("تشغيل الأذان المختار", "Play the selected adhan")) { adhan.playSelected() }
+        action(body, t("إيقاف مؤقت / استئناف", "Pause / resume")) { adhan.togglePause() }
+        action(body, t("إيقاف الصوت", "Stop sound"), red) { adhan.stop() }
     }
 
     private fun pageAppearance(body: LinearLayout) {
-        section(body, t("المظهر", "Appearance"))
-        row(body, t("نمط الزجاج السائل", "Liquid glass style"), Switch(this).apply {
-            isChecked = glassOn
-            setOnCheckedChangeListener { _, c -> edit { putBoolean("glass", c) }; recreate() }
-        })
-        row(body, t("تمويه صورة الخلفية (أندرويد 12+)", "Blur wallpaper (Android 12+)"), switchOf("blurWall", true))
+        group(body, t("النمط", "Style"))
+        row(body, t("الزجاج السائل", "Liquid glass"), switchOf("glass", true) { recreate() },
+            t("بطاقات زجاجية شفافة", "Translucent glass cards"))
+        row(body, t("تمويه صورة الخلفية", "Blur wallpaper"), switchOf("blurWall", true), t("أندرويد 12 وأحدث", "Android 12 and newer"))
         val scales = listOf(80, 90, 100, 110, 125, 150)
-        chipGroup(body, t("حجم الخط", "Text size"), scales.map { "$it%" }, 6,
+        choices(body, t("حجم الخط", "Text size"), scales.map { "$it%" }, if (portrait) 3 else 6,
             { scales.indexOf(prefs.getInt("fontScale", 100)).coerceAtLeast(0) }) { pos ->
             edit { putInt("fontScale", scales[pos]) }
         }
+
+        group(body, t("الألوان", "Colors"))
         colorRow(body, t("لون النص", "Text color"), "textColor", Config.defText)
-        colorRow(body, t("لون تمييز الصلاة القادمة", "Next-prayer highlight color"), "hlColor", Config.defHighlight)
+        colorRow(body, t("تمييز الصلاة القادمة", "Next-prayer highlight"), "hlColor", Config.defHighlight)
         colorRow(body, t("لون الخلفية", "Background color"), "bgColor", Color.BLACK)
 
+        group(body, t("الخلفية", "Wallpaper"))
         val hasImage = (prefs.getString("bgImage", "") ?: "").startsWith("uri:")
         val wallItems = listOf(t("بدون", "None")) + Config.presets.map { if (isAr) it.ar else it.en } +
             (if (hasImage) listOf(t("صورتك", "Your image")) else emptyList())
-        chipGroup(body, t("الخلفية (تدرج)", "Wallpaper (gradient)"), wallItems, 3, {
+        choices(body, t("تدرج لوني", "Gradient"), wallItems, 3, {
             val bg = prefs.getString("bgImage", "") ?: ""
             when {
                 bg.startsWith("preset:") -> (bg.removePrefix("preset:").toIntOrNull() ?: 0) + 1
@@ -428,13 +480,14 @@ class SettingsActivity : Activity() {
                 pos <= Config.presets.size -> edit { putString("bgImage", "preset:${pos - 1}") }
             }
         }
-        wide(body, button(t("اختيار صورة خلفية من الجهاز…", "Choose a wallpaper image from the device…")) {
+        action(body, t("اختيار صورة خلفية من الجهاز…", "Choose a wallpaper image from the device…")) {
             pickFile("image/*", reqImage)
-        })
-
-        val dimLabel = text("${prefs.getInt("dim", 0)}%", 16f)
+        }
+        val dimLabel = text("${prefs.getInt("dim", 0)}%", 15f, c = secondary).apply { minWidth = dp(44) }
         val dimBar = SeekBar(this).apply {
             max = 85; progress = prefs.getInt("dim", 0)
+            progressTintList = ColorStateList.valueOf(blue)
+            thumbTintList = ColorStateList.valueOf(Color.WHITE)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) {
                     dimLabel.text = "$p%"; if (fromUser) edit { putInt("dim", p) }
@@ -444,61 +497,119 @@ class SettingsActivity : Activity() {
             })
         }
         val dimBox = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        dimBox.addView(dimBar, LinearLayout.LayoutParams(dp(260), -2))
+        dimBox.addView(dimBar, lp(dp(if (portrait) 150 else 240), -2))
         dimBox.addView(dimLabel)
-        row(body, t("تعتيم الخلفية", "Wallpaper dimming"), dimBox)
+        row(body, t("تعتيم الخلفية", "Dimming"), dimBox)
 
-        wide(body, button(t("إعادة الألوان والخلفية الافتراضية", "Reset colors and wallpaper")) {
+        group(body)
+        action(body, t("إعادة الألوان والخلفية الافتراضية", "Reset colors and wallpaper"), red) {
             edit { remove("textColor"); remove("hlColor"); remove("bgColor"); remove("bgImage"); remove("dim") }
             recreate()
-        })
+        }
     }
 
     private fun colorRow(body: LinearLayout, label: String, key: String, def: Int) {
-        val swatch = View(this).apply { isClickable = true; isFocusable = true }
+        val swatch = View(this)
         fun paint() {
-            swatch.background = GradientDrawable().apply {
-                setColor(prefs.getInt(key, def)); setStroke(dp(2), Color.WHITE); cornerRadius = dp(8).toFloat()
-            }
+            swatch.background = focusable(GradientDrawable().apply {
+                setColor(prefs.getInt(key, def)); setStroke(dp(2), Color.WHITE); cornerRadius = dp(15).toFloat()
+            }, 15)
         }
         paint()
-        swatch.layoutParams = LinearLayout.LayoutParams(dp(64), dp(40))
+        swatch.layoutParams = lp(dp(30), dp(30))
+        swatch.isClickable = true; swatch.isFocusable = true
         row(body, label, swatch)
 
+        // Palette opens inside the card under the row.
         val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(dp(16), dp(8), dp(16), dp(8))
+            orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(dp(12), 0, dp(12), dp(12))
         }
         fun choose(c: Int) { edit { putInt(key, c) }; paint(); panel.visibility = View.GONE }
-        for (chunk in Config.palette.chunked(8)) {
+        for (chunk in Config.palette.chunked(if (portrait) 6 else 12)) {
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             for (hex in chunk) {
                 val c = Color.parseColor(hex)
                 line.addView(View(this).apply {
-                    background = GradientDrawable().apply { setColor(c); setStroke(dp(2), Color.GRAY); cornerRadius = dp(8).toFloat() }
+                    background = focusable(GradientDrawable().apply {
+                        setColor(c); setStroke(dp(1), Color.argb(120, 255, 255, 255)); cornerRadius = dp(20).toFloat()
+                    }, 20)
                     isClickable = true; isFocusable = true
                     setOnClickListener { choose(c) }
-                }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
+                }, lp(dp(40), dp(40)).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
             }
             panel.addView(line)
         }
-        val hexBox = EditText(this).apply {
-            hint = "#RRGGBB"; setSingleLine(); setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
-            textDirection = View.TEXT_DIRECTION_LTR
-        }
+        val hexBox = input("#RRGGBB").apply { setSingleLine(); textDirection = View.TEXT_DIRECTION_LTR }
         val btns = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        btns.addView(hexBox, LinearLayout.LayoutParams(dp(180), -2))
-        btns.addView(button(t("تطبيق", "Apply")) {
+        btns.addView(hexBox, lp(dp(160), -2))
+        btns.addView(smallButton(t("تطبيق", "Apply"), blue) {
             try {
                 val raw = hexBox.text.toString().trim()
                 choose(Color.parseColor(if (raw.startsWith("#")) raw else "#$raw"))
             } catch (_: Exception) {
                 Toast.makeText(this, t("رمز اللون غير صحيح", "Invalid color code"), Toast.LENGTH_SHORT).show()
             }
-        }, LinearLayout.LayoutParams(-2, -2).apply { setMargins(dp(8), 0, dp(8), 0) })
-        btns.addView(button(t("الافتراضي", "Default")) { choose(def) })
-        panel.addView(btns)
-        body.addView(panel)
+        }, lp(-2, -2).apply { setMargins(dp(8), 0, dp(8), 0) })
+        btns.addView(smallButton(t("الافتراضي", "Default")) { choose(def) })
+        panel.addView(btns, lp(-1, -2).apply { topMargin = dp(8) })
+        card?.addView(panel, lp(-1, -2))
         swatch.setOnClickListener { panel.visibility = if (panel.visibility == View.GONE) View.VISIBLE else View.GONE }
+    }
+
+    private fun pageTiles(body: LinearLayout) {
+        group(body, t("العرض", "Display"))
+        row(body, t("الآيات والأدعية المدمجة", "Built-in verses and duas"), switchOf("tilesBuiltin", true))
+        row(body, t("دعاء ما بعد الأذان", "After-adhan dua"), switchOf("tileAfterAdhan", true),
+            t("يظهر 5 دقائق بعد كل أذان", "Shown for 5 minutes after each adhan"))
+        val secs = listOf(10, 20, 30, 60)
+        choices(body, t("مدة عرض كل رسالة", "Time per message"), secs.map { t("$it ث", "$it s") }, 4,
+            { secs.indexOf(prefs.getInt("tileSeconds", 30)).coerceAtLeast(0) }) { pos ->
+            edit { putInt("tileSeconds", secs[pos]) }
+        }
+
+        group(body, t("رسائلك وأدعيتك", "Your messages and duas"))
+        val listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        item(body, listBox)
+        fun refresh() {
+            listBox.removeAllViews()
+            val items = Config.customTiles(prefs)
+            if (items.isEmpty()) listBox.addView(text(t("لا توجد رسائل بعد", "No messages yet"), 15f, c = secondary)
+                .apply { setPadding(dp(16), dp(14), dp(16), dp(14)) })
+            items.forEachIndexed { i, msg ->
+                if (i > 0) listBox.addView(View(this).apply { setBackgroundColor(Color.argb(38, 255, 255, 255)) },
+                    lp(-1, 1).apply { marginStart = dp(16) })
+                val r = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(16), dp(10), dp(16), dp(10))
+                }
+                r.addView(text(msg, 16f), lp(0, -2, 1f))
+                r.addView(smallButton(t("حذف", "Delete"), red) {
+                    Config.saveTiles(prefs, items.filterIndexed { k, _ -> k != i }); refresh()
+                })
+                listBox.addView(r, lp(-1, -2))
+            }
+        }
+        refresh()
+        val add = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+        }
+        val field = input(t("اكتب دعاءً أو رسالة…", "Type a dua or message…")).apply { minLines = 2 }
+        add.addView(field, lp(0, -2, 1f))
+        add.addView(smallButton(t("إضافة", "Add"), blue) {
+            val msg = field.text.toString().trim()
+            if (msg.isNotEmpty()) { Config.saveTiles(prefs, Config.customTiles(prefs) + msg); field.setText(""); refresh() }
+        }, lp(-2, -2).apply { marginStart = dp(10) })
+        item(body, add)
+    }
+
+    private fun pageLanguage(body: LinearLayout) {
+        group(body)
+        choices(body, t("لغة الإعدادات", "Settings language"), listOf("العربية", "English"), 2,
+            { if (isAr) 0 else 1 }, t("شاشة المواقيت تبقى بالعربية", "The prayer screen stays in Arabic")) { pos ->
+            val new = if (pos == 0) "ar" else "en"
+            if (new != lang) { edit { putString("lang", new) }; recreate() }
+        }
     }
 
     // ---- file pickers ----------------------------------------------------------------------
