@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Settings are now one dedicated full screen (`SettingsActivity`) instead of stacked pop-up lists. Opened by the **الإعدادات** button (or OK/Menu); everything is on one scrollable page and works with mouse, touch or remote.
+- Settings language switch: Arabic / English (region names are translated too). The prayer-times screen stays Arabic with 0-9 digits.
 - A copy of the latest APK (Build 11) is kept in the repo root as `PrayerTimeTV.apk`. The Releases page always has the newest build.
 - Mouse/touch friendly: a visible **الإعدادات** button (top-left) opens the settings; all lists and pickers work with a mouse.
 - Customisation: text colour, highlight colour (next prayer), background colour (colour palette or any #RRGGBB), wallpaper (5 built-in gradients or an image from the device), background dimming, reset to defaults.

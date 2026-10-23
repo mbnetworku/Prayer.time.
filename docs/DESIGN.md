@@ -8,3 +8,4 @@
 - Digits are always formatted with `Locale.US` so they stay 0-9.
 - Display mode `timesOnly` (pref) hides the left info panel. Adhan choice (pref `azan`) is the name of a raw resource: `adhan` or `adhan_*`, found by reflection on `R.raw`.
 - Theme prefs: `textColor`, `hlColor`, `bgColor`, `dim` (0-85 %), `bgImage` (`preset:N` or `uri:<content uri>`), `azan` (`adhan*` or `uri`) + `azanUri`. The UI is a FrameLayout (colour, wallpaper, dim, content, settings button) and is rebuilt by `applyChanges()` after any change. If the TV has no file-picker app, the picker shows a message; use the built-in gradients and adhans then.
+- `SettingsActivity.kt` is the only settings UI (built in code, language pref `lang` = `ar`/`en`, strings via `t(ar, en)`). `Config.kt` holds shared palette, wallpaper presets and the list of adhan resources. MainActivity rebuilds itself in `onResume` after returning from settings.

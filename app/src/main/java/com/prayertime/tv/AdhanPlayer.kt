@@ -38,6 +38,15 @@ class AdhanPlayer(private val ctx: Context) {
         chime()
     }
 
+    /** Plays the adhan chosen in settings (built-in file or a file from the device). */
+    fun playSelected() {
+        val p = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
+        val choice = p.getString("azan", "adhan") ?: "adhan"
+        val uri = p.getString("azanUri", "") ?: ""
+        if (choice == "uri" && uri.isNotEmpty()) playUri(Uri.parse(uri))
+        else play(if (choice in Config.azanOptions()) choice else "adhan")
+    }
+
     /** Plays an audio file chosen by the user (content:// uri). */
     fun playUri(uri: Uri) {
         stop()

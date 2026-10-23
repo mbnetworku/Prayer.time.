@@ -1,6 +1,8 @@
 package com.prayertime.tv
 
-class Region(val nameAr: String, val lat: Double, val lng: Double, val zone: String, val method: Method)
+class Region(val nameAr: String, val lat: Double, val lng: Double, val zone: String, val method: Method) {
+    var nameEn: String = nameAr
+}
 
 object Regions {
     val all = listOf(
@@ -39,4 +41,43 @@ object Regions {
         Region("نيويورك - أمريكا", 40.7128, -74.0060, "America/New_York", Methods.ISNA),
         Region("تورنتو - كندا", 43.6532, -79.3832, "America/Toronto", Methods.ISNA),
     )
+
+    private val english = listOf(
+        "Manama - Bahrain",
+        "Makkah - Saudi Arabia",
+        "Madinah - Saudi Arabia",
+        "Riyadh - Saudi Arabia",
+        "Jeddah - Saudi Arabia",
+        "Dammam - Saudi Arabia",
+        "Doha - Qatar",
+        "Kuwait City - Kuwait",
+        "Dubai - UAE",
+        "Abu Dhabi - UAE",
+        "Muscat - Oman",
+        "Sanaa - Yemen",
+        "Baghdad - Iraq",
+        "Amman - Jordan",
+        "Jerusalem - Palestine",
+        "Damascus - Syria",
+        "Beirut - Lebanon",
+        "Cairo - Egypt",
+        "Khartoum - Sudan",
+        "Tripoli - Libya",
+        "Tunis - Tunisia",
+        "Algiers - Algeria",
+        "Rabat - Morocco",
+        "Kano - Nigeria",
+        "Istanbul - Turkey",
+        "Karachi - Pakistan",
+        "Lahore - Pakistan",
+        "Dhaka - Bangladesh",
+        "Jakarta - Indonesia",
+        "Kuala Lumpur - Malaysia",
+        "London - UK",
+        "Paris - France",
+        "New York - USA",
+        "Toronto - Canada",
+    )
+
+    init { all.zip(english).forEach { (r, e) -> r.nameEn = e } }
 }

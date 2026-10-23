@@ -38,15 +38,10 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var adhan: AdhanPlayer
 
-    private val defText = Color.parseColor("#8EC5FF")
-    private val defHighlight = Color.parseColor("#14305A")
-    private val textColor get() = prefs.getInt("textColor", defText)
-    private val highlightColor get() = prefs.getInt("hlColor", defHighlight)
+    private val textColor get() = prefs.getInt("textColor", Config.defText)
+    private val highlightColor get() = prefs.getInt("hlColor", Config.defHighlight)
     private val bgColor get() = prefs.getInt("bgColor", Color.BLACK)
     private val dimPercent get() = prefs.getInt("dim", 0)
-    private var dialog: AlertDialog? = null
-    private val reqImage = 11
-    private val reqAudio = 12
     private val names = listOf("الفجر", "الشروق", "الظهر", "الجمعة", "العصر", "المغرب", "العشاء")
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
         "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة")
@@ -97,6 +92,7 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        if (settingsOpened) { settingsOpened = false; applyChanges() }
         handler.post(ticker)
     }
 
@@ -172,19 +168,12 @@ class MainActivity : Activity() {
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
 
-    private val presets = listOf(
-        "أزرق ليلي" to intArrayOf(Color.parseColor("#0B1B3A"), Color.BLACK),
-        "أخضر داكن" to intArrayOf(Color.parseColor("#0B3D2E"), Color.parseColor("#02130E")),
-        "بنفسجي" to intArrayOf(Color.parseColor("#2A1458"), Color.parseColor("#0A0418")),
-        "ذهبي داكن" to intArrayOf(Color.parseColor("#3A2A0B"), Color.parseColor("#0F0A02")),
-        "رمادي" to intArrayOf(Color.parseColor("#2B2B2B"), Color.BLACK))
-
     private fun loadWallpaper(iv: ImageView) {
         val v = prefs.getString("bgImage", "") ?: ""
         try {
             when {
                 v.startsWith("preset:") -> {
-                    val c = presets[v.removePrefix("preset:").toInt().coerceIn(0, presets.size - 1)].second
+                    val c = Config.presets[v.removePrefix("preset:").toInt().coerceIn(0, Config.presets.size - 1)].colors
                     iv.setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c))
                 }
                 v.startsWith("uri:") -> {
@@ -286,147 +275,19 @@ class MainActivity : Activity() {
         return super.onKeyDown(keyCode, e)
     }
 
-    /** Adhan files are the raw resources named adhan, adhan_2, adhan_3, ... */
-    private fun azanOptions(): List<String> =
-        R.raw::class.java.fields.map { it.name }.filter { it == "adhan" || it.startsWith("adhan_") }.sorted()
+    private fun playAzan() = adhan.playSelected()
 
-    private fun azanLabel(name: String) =
-        if (name == "uri") "ملف من الجهاز" else "الأذان " + (azanOptions().indexOf(name) + 1)
-
-    private fun playAzan() {
-        if (azan == "uri" && azanUri.isNotEmpty()) adhan.playUri(Uri.parse(azanUri))
-        else adhan.play(if (azan in azanOptions()) azan else "adhan")
-    }
-
-    /** Re-creates the screen so colour / wallpaper changes show immediately. */
+    /** Re-creates the screen so changes made in settings show immediately. */
     private fun applyChanges() {
         setContentView(buildUi())
         cachedDate = null
         load(ZonedDateTime.now(ZoneId.of(region.zone)))
     }
 
-    private fun openSettings() { if (dialog?.isShowing != true) showSettings() }
+    private var settingsOpened = false
 
-    private fun setPref(f: android.content.SharedPreferences.Editor.() -> Unit) {
-        prefs.edit().apply(f).apply()
-    }
-
-    private fun showSettings() {
-        val dimNext = listOf(0, 30, 50, 70, 85).let { it[(it.indexOf(dimPercent) + 1) % it.size] }
-        val entries = listOf<Pair<String, () -> Unit>>(
-            "المنطقة: " + region.nameAr to { pickRegion() },
-            "اختيار الأذان: " + azanLabel(azan) to { pickAzan() },
-            "صوت الأذان: " + (if (soundOn) "مفعل" else "متوقف") to { setPref { putBoolean("sound", !soundOn) }; showSettings() },
-            "تجربة الصوت" to { playAzan(); showSettings() },
-            "لون النص" to { pickColor("لون النص", "textColor", defText) },
-            "لون التمييز (الصلاة القادمة)" to { pickColor("لون التمييز", "hlColor", defHighlight) },
-            "لون الخلفية" to { pickColor("لون الخلفية", "bgColor", Color.BLACK) },
-            "خلفية (صورة أو تدرج)" to { pickWallpaper() },
-            "تعتيم الخلفية: $dimPercent% (اضغط للتغيير)" to { setPref { putInt("dim", dimNext) }; applyChanges(); showSettings() },
-            "العرض: " + (if (timesOnly) "المواقيت فقط" else "كامل") to { setPref { putBoolean("timesOnly", !timesOnly) }; showSettings() },
-            "نظام الساعة: " + (if (use24) "24 ساعة" else "12 ساعة") to { setPref { putBoolean("h24", !use24) }; cachedDate = null; showSettings() },
-            "تعديل التاريخ الهجري: $hijriAdj" to { setPref { putInt("hijriAdj", if (hijriAdj >= 1) -1 else hijriAdj + 1) }; cachedDate = null; showSettings() },
-            "إعادة الألوان والخلفية الافتراضية" to {
-                setPref { remove("textColor"); remove("hlColor"); remove("bgColor"); remove("bgImage"); remove("dim") }
-                applyChanges(); showSettings()
-            })
-        dialog = AlertDialog.Builder(this).setTitle("الإعدادات")
-            .setItems(entries.map { it.first }.toTypedArray()) { _, w -> entries[w].second() }
-            .setNegativeButton("إغلاق", null).show()
-    }
-
-    private fun pickAzan() {
-        val opts = azanOptions()
-        val labels = opts.map { azanLabel(it) } + "اختيار ملف صوت من الجهاز…"
-        val current = if (azan == "uri") opts.size else opts.indexOf(azan).coerceAtLeast(0)
-        dialog = AlertDialog.Builder(this).setTitle("اختر الأذان")
-            .setSingleChoiceItems(labels.toTypedArray(), current) { d, w ->
-                d.dismiss()
-                if (w == opts.size) pickFile("audio/*", reqAudio)
-                else { setPref { putString("azan", opts[w]) }; playAzan(); showSettings() } // preview
-            }.show()
-    }
-
-    private fun pickRegion() {
-        dialog = AlertDialog.Builder(this).setTitle("اختر المنطقة")
-            .setSingleChoiceItems(Regions.all.map { it.nameAr }.toTypedArray(),
-                prefs.getInt("region", 0)) { d, w ->
-                setPref { putInt("region", w) }; d.dismiss(); showSettings()
-            }.show()
-    }
-
-    private fun pickWallpaper() {
-        val labels = listOf("بدون خلفية (لون فقط)") + presets.map { it.first } + "صورة من الجهاز…"
-        dialog = AlertDialog.Builder(this).setTitle("الخلفية").setItems(labels.toTypedArray()) { _, w ->
-            when (w) {
-                0 -> { setPref { remove("bgImage") }; applyChanges(); showSettings() }
-                labels.size - 1 -> pickFile("image/*", reqImage)
-                else -> { setPref { putString("bgImage", "preset:${w - 1}") }; applyChanges(); showSettings() }
-            }
-        }.show()
-    }
-
-    private fun pickFile(mime: String, req: Int) {
-        fun intent(action: String) = Intent(action).apply {
-            addCategory(Intent.CATEGORY_OPENABLE); type = mime
-            if (action == Intent.ACTION_OPEN_DOCUMENT)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
-        try { startActivityForResult(intent(Intent.ACTION_OPEN_DOCUMENT), req) }
-        catch (_: ActivityNotFoundException) {
-            try { startActivityForResult(intent(Intent.ACTION_GET_CONTENT), req) }
-            catch (_: ActivityNotFoundException) {
-                Toast.makeText(this, "لا يوجد تطبيق لاختيار الملفات على هذا الجهاز", Toast.LENGTH_LONG).show()
-                showSettings()
-            }
-        }
-    }
-
-    override fun onActivityResult(req: Int, res: Int, data: Intent?) {
-        super.onActivityResult(req, res, data)
-        val uri = data?.data
-        if (res == RESULT_OK && uri != null && (req == reqImage || req == reqAudio)) {
-            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            catch (_: Exception) { /* not persistable: works until the app is restarted */ }
-            if (req == reqImage) { setPref { putString("bgImage", "uri:$uri") }; applyChanges() }
-            else { setPref { putString("azan", "uri"); putString("azanUri", uri.toString()) }; playAzan() }
-        }
-        showSettings()
-    }
-
-    private val palette = listOf(
-        "#FFFFFF", "#F5F5F5", "#BDBDBD", "#757575", "#212121", "#000000",
-        "#8EC5FF", "#42A5F5", "#1565C0", "#14305A", "#0B1B3A", "#00BCD4",
-        "#81C784", "#2E7D32", "#0B3D2E", "#FFEB3B", "#FFC107", "#FF9800",
-        "#E53935", "#B71C1C", "#EC407A", "#AB47BC", "#5E35B1", "#6D4C41")
-
-    private fun pickColor(title: String, key: String, def: Int) {
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
-        lateinit var dlg: AlertDialog
-        fun choose(c: Int) { setPref { putInt(key, c) }; dlg.dismiss(); applyChanges(); showSettings() }
-        for (chunk in palette.chunked(6)) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            for (hex in chunk) {
-                val c = Color.parseColor(hex)
-                row.addView(View(this).apply {
-                    background = GradientDrawable().apply { setColor(c); setStroke(dp(2), Color.GRAY); cornerRadius = dp(8).toFloat() }
-                    isClickable = true; isFocusable = true
-                    setOnClickListener { choose(c) }
-                }, LinearLayout.LayoutParams(dp(52), dp(52)).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) })
-            }
-            col.addView(row)
-        }
-        val hexBox = EditText(this).apply {
-            hint = "#RRGGBB"; setSingleLine(); textDirection = View.TEXT_DIRECTION_LTR
-        }
-        col.addView(hexBox)
-        dlg = AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply { addView(col) })
-            .setPositiveButton("تطبيق اللون") { _, _ ->
-                try { choose(Color.parseColor(hexBox.text.toString().trim().let { if (it.startsWith("#")) it else "#$it" })) }
-                catch (_: Exception) { Toast.makeText(this, "رمز اللون غير صحيح", Toast.LENGTH_SHORT).show(); showSettings() }
-            }
-            .setNeutralButton("الافتراضي") { _, _ -> setPref { putInt(key, def) }; applyChanges(); showSettings() }
-            .setNegativeButton("رجوع") { _, _ -> showSettings() }.create()
-        dlg.show()
+    private fun openSettings() {
+        settingsOpened = true
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 }
