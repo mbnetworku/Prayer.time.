@@ -130,7 +130,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var nextName: TextView
-    private lateinit var nextTime: TextView
+    private lateinit var nextTimeView: TextView
     private lateinit var progFill: View
     private lateinit var progRest: View
 
@@ -197,9 +197,9 @@ class MainActivity : Activity() {
             setPadding(dp(24), dp(14), dp(24), dp(16))
         }
         val nextLine = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        nextName = tv(26f, true); nextTime = tv(26f).apply { alpha = 0.85f; textDirection = View.TEXT_DIRECTION_RTL }
+        nextName = tv(26f, true); nextTimeView = tv(26f).apply { alpha = 0.85f; textDirection = View.TEXT_DIRECTION_RTL }
         nextLine.addView(tv(18f).apply { text = "الصلاة القادمة  "; alpha = 0.8f })
-        nextLine.addView(nextName); nextLine.addView(tv(26f).apply { text = "  •  "; alpha = 0.5f }); nextLine.addView(nextTime)
+        nextLine.addView(nextName); nextLine.addView(tv(26f).apply { text = "  •  "; alpha = 0.5f }); nextLine.addView(nextTimeView)
         countdown = tv(40f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         val track = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -346,7 +346,7 @@ class MainActivity : Activity() {
                 val s = Duration.between(now, it).seconds.coerceAtLeast(0)
                 countdown.text = String.format(Locale.US, "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60)
                 nextName.text = names2[next]
-                nextTime.text = timeViews.getOrNull(next)?.text ?: ""
+                nextTimeView.text = timeViews.getOrNull(next)?.text ?: ""
                 // Progress from the previous prayer to the next one.
                 val prev = today.filterNotNull().lastOrNull { !it.isAfter(now) } ?: now.toLocalDate().atStartOfDay(now.zone)
                 val total = Duration.between(prev, it).seconds.coerceAtLeast(1)
