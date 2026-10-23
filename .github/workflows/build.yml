@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,7 +14,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.7" }
       - run: gradle assembleDebug
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk PrayerTimeTV.apk
       - uses: actions/upload-artifact@v4
         with:
           name: PrayerTimeTV-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: PrayerTimeTV.apk
+      # Every successful build on master is published as a Release with the APK attached.
+      - name: Publish release
+        if: github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          body: "Debug APK built from commit ${{ github.sha }}. See CHANGELOG.md."
+          files: PrayerTimeTV.apk
