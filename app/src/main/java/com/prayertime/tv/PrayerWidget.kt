@@ -61,7 +61,7 @@ class PrayerWidget : AppWidgetProvider() {
             }
 
             fun period(h: Double): String {
-                if (use24 || h.isNaN() || prefs.getString("ampm", "full") == "none") return ""
+                if (use24 || h.isNaN() || prefs.getString("ampm", "short") == "none") return ""
                 val am = ((Math.round(h * 60).toInt() % 1440 + 1440) % 1440) < 720
                 return if (ar) (if (am) " ص" else " م") else (if (am) " AM" else " PM")
             }

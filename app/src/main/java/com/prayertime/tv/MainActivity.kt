@@ -244,7 +244,7 @@ class MainActivity : Activity() {
     private fun period(h: Double): String {
         if (use24 || h.isNaN()) return ""
         val am = ((Math.round(h * 60).toInt() % 1440 + 1440) % 1440) < 720
-        return when (prefs.getString("ampm", "full")) {
+        return when (prefs.getString("ampm", "short")) {
             "none" -> ""
             "short" -> if (am) "ص" else "م"
             else -> if (am) "صباحاً" else "مساءً"

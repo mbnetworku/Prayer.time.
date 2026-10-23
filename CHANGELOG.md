@@ -3,7 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
-- 12-hour clock: times show **صباحاً** (AM) / **مساءً** (PM) in smaller text after the time - prayer table and main clock; the widget's next prayer shows ص/م (AM/PM in English). Settings > General > AM / PM label: full words, ص / م, or none.
+- 12-hour clock: times show **صباحاً** (AM) / **مساءً** (PM) in smaller text after the time - prayer table and main clock; the widget's next prayer shows ص/م (AM/PM in English). Settings > General > AM / PM label: ص / م (default), full words صباحاً / مساءً, or none.
 - **Adhan notification** with **Pause / Resume** and **Stop** buttons (notification bar and lock screen) while the adhan plays; swiping it away stops the adhan. Android 13+ asks for notification permission once (phones only). The adhan length limit pauses with the adhan.
 - One shared adhan player for the whole app; leaving the settings screen no longer cuts off the sound (stop it with the notification, the Stop button, or OK on the remote). Settings > Adhan: new **Pause / resume** button.
 - **Home-screen widget** for phones/tablets: city, next prayer and today's six times on a glass background; refreshes after each prayer and when settings change; tap to open the app. Labels follow the device language.
