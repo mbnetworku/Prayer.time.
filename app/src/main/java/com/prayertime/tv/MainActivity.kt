@@ -2,8 +2,13 @@ package com.prayertime.tv
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -12,8 +17,13 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -28,7 +38,15 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var adhan: AdhanPlayer
 
-    private val blue = Color.parseColor("#8EC5FF")
+    private val defText = Color.parseColor("#8EC5FF")
+    private val defHighlight = Color.parseColor("#14305A")
+    private val textColor get() = prefs.getInt("textColor", defText)
+    private val highlightColor get() = prefs.getInt("hlColor", defHighlight)
+    private val bgColor get() = prefs.getInt("bgColor", Color.BLACK)
+    private val dimPercent get() = prefs.getInt("dim", 0)
+    private var dialog: AlertDialog? = null
+    private val reqImage = 11
+    private val reqAudio = 12
     private val names = listOf("الفجر", "الشروق", "الظهر", "الجمعة", "العصر", "المغرب", "العشاء")
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
         "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة")
@@ -64,6 +82,7 @@ class MainActivity : Activity() {
     private val soundOn get() = prefs.getBoolean("sound", true)
     private val timesOnly get() = prefs.getBoolean("timesOnly", false)
     private val azan get() = prefs.getString("azan", "adhan") ?: "adhan"
+    private val azanUri get() = prefs.getString("azanUri", "") ?: ""
     private val hijriAdj get() = prefs.getInt("hijriAdj", 0)
 
     override fun onCreate(b: Bundle?) {
@@ -84,15 +103,15 @@ class MainActivity : Activity() {
     override fun onPause() { handler.removeCallbacks(ticker); super.onPause() }
     override fun onDestroy() { adhan.stop(); super.onDestroy() }
 
-    private fun tv(size: Float, bold: Boolean = false, c: Int = blue) = TextView(this).apply {
+    private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
         setTextColor(c); textSize = size; gravity = Gravity.CENTER
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
     private fun buildUi(): View {
+        nameViews.clear(); timeViews.clear(); rows.clear()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.BLACK)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(48, 24, 48, 24)
         }
@@ -128,7 +147,57 @@ class MainActivity : Activity() {
             info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
         }
         root.addView(info, LinearLayout.LayoutParams(0, -1, 1.2f))
-        return root
+        verse.text = verses[(tick / 30) % verses.size]
+
+        // Layers: background colour, wallpaper, dim overlay, content, settings button.
+        val frame = FrameLayout(this).apply {
+            setBackgroundColor(bgColor); layoutDirection = View.LAYOUT_DIRECTION_LTR
+        }
+        val wall = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+        loadWallpaper(wall)
+        frame.addView(wall, FrameLayout.LayoutParams(-1, -1))
+        frame.addView(View(this).apply { setBackgroundColor(Color.argb(dimPercent * 255 / 100, 0, 0, 0)) },
+            FrameLayout.LayoutParams(-1, -1))
+        frame.addView(root, FrameLayout.LayoutParams(-1, -1))
+        val gear = TextView(this).apply {
+            text = "الإعدادات"; textSize = 16f; setTextColor(textColor)
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.argb(110, 0, 0, 0)); setStroke(dp(1), textColor) }
+            isClickable = true; isFocusable = true
+            setOnClickListener { openSettings() }
+        }
+        frame.addView(gear, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.LEFT).apply { setMargins(dp(16), dp(12), 0, 0) })
+        return frame
+    }
+
+    private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
+
+    private val presets = listOf(
+        "أزرق ليلي" to intArrayOf(Color.parseColor("#0B1B3A"), Color.BLACK),
+        "أخضر داكن" to intArrayOf(Color.parseColor("#0B3D2E"), Color.parseColor("#02130E")),
+        "بنفسجي" to intArrayOf(Color.parseColor("#2A1458"), Color.parseColor("#0A0418")),
+        "ذهبي داكن" to intArrayOf(Color.parseColor("#3A2A0B"), Color.parseColor("#0F0A02")),
+        "رمادي" to intArrayOf(Color.parseColor("#2B2B2B"), Color.BLACK))
+
+    private fun loadWallpaper(iv: ImageView) {
+        val v = prefs.getString("bgImage", "") ?: ""
+        try {
+            when {
+                v.startsWith("preset:") -> {
+                    val c = presets[v.removePrefix("preset:").toInt().coerceIn(0, presets.size - 1)].second
+                    iv.setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c))
+                }
+                v.startsWith("uri:") -> {
+                    val uri = Uri.parse(v.removePrefix("uri:"))
+                    val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, b) }
+                    var sample = 1
+                    while (b.outWidth / sample > 2000) sample *= 2
+                    val o = BitmapFactory.Options().apply { inSampleSize = sample }
+                    contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(BitmapFactory.decodeStream(it, null, o)) }
+                }
+            }
+        } catch (_: Exception) { /* image gone or unreadable: fall back to the plain colour */ }
     }
 
     private fun hm(h: Double): String = if (h.isNaN()) "--:--" else {
@@ -187,7 +256,7 @@ class MainActivity : Activity() {
                     names2[next], s / 3600, s % 3600 / 60, s % 60)
             }
             for (i in rows.indices) rows[i].setBackgroundColor(
-                if (i == next) Color.parseColor("#14305A") else Color.TRANSPARENT)
+                if (i == next) highlightColor else Color.TRANSPARENT)
 
             // Fire adhan (not for sunrise) within 30s after the exact time.
             for (i in today.indices) {
@@ -213,7 +282,7 @@ class MainActivity : Activity() {
             adhan.stop(); return true
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER ||
-            keyCode == KeyEvent.KEYCODE_MENU) { showSettings(); return true }
+            keyCode == KeyEvent.KEYCODE_MENU) { openSettings(); return true }
         return super.onKeyDown(keyCode, e)
     }
 
@@ -221,48 +290,143 @@ class MainActivity : Activity() {
     private fun azanOptions(): List<String> =
         R.raw::class.java.fields.map { it.name }.filter { it == "adhan" || it.startsWith("adhan_") }.sorted()
 
-    private fun azanLabel(name: String) = "الأذان " + (azanOptions().indexOf(name) + 1)
+    private fun azanLabel(name: String) =
+        if (name == "uri") "ملف من الجهاز" else "الأذان " + (azanOptions().indexOf(name) + 1)
 
-    private fun playAzan() = adhan.play(if (azan in azanOptions()) azan else "adhan")
+    private fun playAzan() {
+        if (azan == "uri" && azanUri.isNotEmpty()) adhan.playUri(Uri.parse(azanUri))
+        else adhan.play(if (azan in azanOptions()) azan else "adhan")
+    }
+
+    /** Re-creates the screen so colour / wallpaper changes show immediately. */
+    private fun applyChanges() {
+        setContentView(buildUi())
+        cachedDate = null
+        load(ZonedDateTime.now(ZoneId.of(region.zone)))
+    }
+
+    private fun openSettings() { if (dialog?.isShowing != true) showSettings() }
+
+    private fun setPref(f: android.content.SharedPreferences.Editor.() -> Unit) {
+        prefs.edit().apply(f).apply()
+    }
 
     private fun showSettings() {
-        val items = arrayOf(
-            "المنطقة: " + region.nameAr,
-            "اختيار الأذان: " + azanLabel(azan),
-            "صوت الأذان: " + if (soundOn) "مفعل" else "متوقف",
-            "العرض: " + if (timesOnly) "المواقيت فقط" else "كامل",
-            "نظام الساعة: " + if (use24) "24 ساعة" else "12 ساعة",
-            "تعديل التاريخ الهجري: " + hijriAdj,
-            "تجربة الصوت")
-        AlertDialog.Builder(this).setTitle("الإعدادات").setItems(items) { _, w ->
-            when (w) {
-                0 -> pickRegion()
-                1 -> pickAzan()
-                2 -> prefs.edit().putBoolean("sound", !soundOn).apply()
-                3 -> prefs.edit().putBoolean("timesOnly", !timesOnly).apply()
-                4 -> prefs.edit().putBoolean("h24", !use24).apply()
-                5 -> prefs.edit().putInt("hijriAdj", if (hijriAdj >= 1) -1 else hijriAdj + 1).apply()
-                6 -> playAzan()
-            }
-            if (w in 2..5) { cachedDate = null; showSettings() }
-        }.show()
+        val dimNext = listOf(0, 30, 50, 70, 85).let { it[(it.indexOf(dimPercent) + 1) % it.size] }
+        val entries = listOf<Pair<String, () -> Unit>>(
+            "المنطقة: " + region.nameAr to { pickRegion() },
+            "اختيار الأذان: " + azanLabel(azan) to { pickAzan() },
+            "صوت الأذان: " + (if (soundOn) "مفعل" else "متوقف") to { setPref { putBoolean("sound", !soundOn) }; showSettings() },
+            "تجربة الصوت" to { playAzan(); showSettings() },
+            "لون النص" to { pickColor("لون النص", "textColor", defText) },
+            "لون التمييز (الصلاة القادمة)" to { pickColor("لون التمييز", "hlColor", defHighlight) },
+            "لون الخلفية" to { pickColor("لون الخلفية", "bgColor", Color.BLACK) },
+            "خلفية (صورة أو تدرج)" to { pickWallpaper() },
+            "تعتيم الخلفية: $dimPercent% (اضغط للتغيير)" to { setPref { putInt("dim", dimNext) }; applyChanges(); showSettings() },
+            "العرض: " + (if (timesOnly) "المواقيت فقط" else "كامل") to { setPref { putBoolean("timesOnly", !timesOnly) }; showSettings() },
+            "نظام الساعة: " + (if (use24) "24 ساعة" else "12 ساعة") to { setPref { putBoolean("h24", !use24) }; cachedDate = null; showSettings() },
+            "تعديل التاريخ الهجري: $hijriAdj" to { setPref { putInt("hijriAdj", if (hijriAdj >= 1) -1 else hijriAdj + 1) }; cachedDate = null; showSettings() },
+            "إعادة الألوان والخلفية الافتراضية" to {
+                setPref { remove("textColor"); remove("hlColor"); remove("bgColor"); remove("bgImage"); remove("dim") }
+                applyChanges(); showSettings()
+            })
+        dialog = AlertDialog.Builder(this).setTitle("الإعدادات")
+            .setItems(entries.map { it.first }.toTypedArray()) { _, w -> entries[w].second() }
+            .setNegativeButton("إغلاق", null).show()
     }
 
     private fun pickAzan() {
         val opts = azanOptions()
-        AlertDialog.Builder(this).setTitle("اختر الأذان")
-            .setSingleChoiceItems(opts.map { azanLabel(it) }.toTypedArray(),
-                opts.indexOf(azan).coerceAtLeast(0)) { d, w ->
-                prefs.edit().putString("azan", opts[w]).apply(); d.dismiss()
-                playAzan() // preview the selection
+        val labels = opts.map { azanLabel(it) } + "اختيار ملف صوت من الجهاز…"
+        val current = if (azan == "uri") opts.size else opts.indexOf(azan).coerceAtLeast(0)
+        dialog = AlertDialog.Builder(this).setTitle("اختر الأذان")
+            .setSingleChoiceItems(labels.toTypedArray(), current) { d, w ->
+                d.dismiss()
+                if (w == opts.size) pickFile("audio/*", reqAudio)
+                else { setPref { putString("azan", opts[w]) }; playAzan(); showSettings() } // preview
             }.show()
     }
 
     private fun pickRegion() {
-        AlertDialog.Builder(this).setTitle("اختر المنطقة")
+        dialog = AlertDialog.Builder(this).setTitle("اختر المنطقة")
             .setSingleChoiceItems(Regions.all.map { it.nameAr }.toTypedArray(),
                 prefs.getInt("region", 0)) { d, w ->
-                prefs.edit().putInt("region", w).apply(); d.dismiss()
+                setPref { putInt("region", w) }; d.dismiss(); showSettings()
             }.show()
+    }
+
+    private fun pickWallpaper() {
+        val labels = listOf("بدون خلفية (لون فقط)") + presets.map { it.first } + "صورة من الجهاز…"
+        dialog = AlertDialog.Builder(this).setTitle("الخلفية").setItems(labels.toTypedArray()) { _, w ->
+            when (w) {
+                0 -> { setPref { remove("bgImage") }; applyChanges(); showSettings() }
+                labels.size - 1 -> pickFile("image/*", reqImage)
+                else -> { setPref { putString("bgImage", "preset:${w - 1}") }; applyChanges(); showSettings() }
+            }
+        }.show()
+    }
+
+    private fun pickFile(mime: String, req: Int) {
+        fun intent(action: String) = Intent(action).apply {
+            addCategory(Intent.CATEGORY_OPENABLE); type = mime
+            if (action == Intent.ACTION_OPEN_DOCUMENT)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        try { startActivityForResult(intent(Intent.ACTION_OPEN_DOCUMENT), req) }
+        catch (_: ActivityNotFoundException) {
+            try { startActivityForResult(intent(Intent.ACTION_GET_CONTENT), req) }
+            catch (_: ActivityNotFoundException) {
+                Toast.makeText(this, "لا يوجد تطبيق لاختيار الملفات على هذا الجهاز", Toast.LENGTH_LONG).show()
+                showSettings()
+            }
+        }
+    }
+
+    override fun onActivityResult(req: Int, res: Int, data: Intent?) {
+        super.onActivityResult(req, res, data)
+        val uri = data?.data
+        if (res == RESULT_OK && uri != null && (req == reqImage || req == reqAudio)) {
+            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            catch (_: Exception) { /* not persistable: works until the app is restarted */ }
+            if (req == reqImage) { setPref { putString("bgImage", "uri:$uri") }; applyChanges() }
+            else { setPref { putString("azan", "uri"); putString("azanUri", uri.toString()) }; playAzan() }
+        }
+        showSettings()
+    }
+
+    private val palette = listOf(
+        "#FFFFFF", "#F5F5F5", "#BDBDBD", "#757575", "#212121", "#000000",
+        "#8EC5FF", "#42A5F5", "#1565C0", "#14305A", "#0B1B3A", "#00BCD4",
+        "#81C784", "#2E7D32", "#0B3D2E", "#FFEB3B", "#FFC107", "#FF9800",
+        "#E53935", "#B71C1C", "#EC407A", "#AB47BC", "#5E35B1", "#6D4C41")
+
+    private fun pickColor(title: String, key: String, def: Int) {
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
+        lateinit var dlg: AlertDialog
+        fun choose(c: Int) { setPref { putInt(key, c) }; dlg.dismiss(); applyChanges(); showSettings() }
+        for (chunk in palette.chunked(6)) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for (hex in chunk) {
+                val c = Color.parseColor(hex)
+                row.addView(View(this).apply {
+                    background = GradientDrawable().apply { setColor(c); setStroke(dp(2), Color.GRAY); cornerRadius = dp(8).toFloat() }
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { choose(c) }
+                }, LinearLayout.LayoutParams(dp(52), dp(52)).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) })
+            }
+            col.addView(row)
+        }
+        val hexBox = EditText(this).apply {
+            hint = "#RRGGBB"; setSingleLine(); textDirection = View.TEXT_DIRECTION_LTR
+        }
+        col.addView(hexBox)
+        dlg = AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply { addView(col) })
+            .setPositiveButton("تطبيق اللون") { _, _ ->
+                try { choose(Color.parseColor(hexBox.text.toString().trim().let { if (it.startsWith("#")) it else "#$it" })) }
+                catch (_: Exception) { Toast.makeText(this, "رمز اللون غير صحيح", Toast.LENGTH_SHORT).show(); showSettings() }
+            }
+            .setNeutralButton("الافتراضي") { _, _ -> setPref { putInt(key, def) }; applyChanges(); showSettings() }
+            .setNegativeButton("رجوع") { _, _ -> showSettings() }.create()
+        dlg.show()
     }
 }

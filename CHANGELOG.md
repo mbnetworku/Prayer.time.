@@ -3,6 +3,9 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Mouse/touch friendly: a visible **الإعدادات** button (top-left) opens the settings; all lists and pickers work with a mouse.
+- Customisation: text colour, highlight colour (next prayer), background colour (colour palette or any #RRGGBB), wallpaper (5 built-in gradients or an image from the device), background dimming, reset to defaults.
+- Adhan: besides the built-in `adhan*.mp3` files you can pick any audio file from the device.
 - versionCode/versionName now follow the GitHub build number, so each new build installs as an update over the previous one (same signing key since Build 8).
 - Builds are now signed with one fixed key (`app/prayer-debug.jks`) so a new APK installs over the previous one. Uninstall the old app once before installing this build.
 - docs/INSTALL.md: how to handle the Google Play Protect warning.

@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 
@@ -33,6 +34,29 @@ class AdhanPlayer(private val ctx: Context) {
                 }
                 if (player != null) return
             } catch (_: Exception) { }
+        }
+        chime()
+    }
+
+    /** Plays an audio file chosen by the user (content:// uri). */
+    fun playUri(uri: Uri) {
+        stop()
+        playing = true
+        try {
+            player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+                )
+                setDataSource(ctx, uri)
+                setOnCompletionListener { stop() }
+                prepare()
+                start()
+            }
+            return
+        } catch (_: Exception) {
+            player?.release(); player = null
         }
         chime()
     }
