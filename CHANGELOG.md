@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Added the adhan audio as `app/src/main/res/raw/adhan.mp3` (supplied by the repo owner); the app now plays it instead of the fallback chime.
 - CI: each successful build on `master` is published as a GitHub Release with `PrayerTimeTV.apk` attached.
 - Docs: added `docs/INSTALL.md` and `docs/DESIGN.md`.
 
