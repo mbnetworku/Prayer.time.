@@ -1,6 +1,11 @@
 package com.prayertime.tv
 
+import android.app.Activity
+import android.app.UiModeManager
+import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import org.json.JSONArray
@@ -53,4 +58,24 @@ object Config {
     /** Deep colourful backdrop that makes the glass visible when no wallpaper is chosen. */
     fun glassBackground() = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
         Color.parseColor("#0F2A5C"), Color.parseColor("#3A1C71"), Color.parseColor("#0E5E6F")))
+
+    // ---- Screen orientation (pref "orientation": auto / landscape / portrait) ------------
+
+    /** True on Android TV / TV boxes. */
+    fun isTv(ctx: Context): Boolean {
+        val ui = ctx.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        return ui?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+            ctx.packageManager.hasSystemFeature("android.software.leanback")
+    }
+
+    /** Auto: TV = landscape, phone/tablet = follow the device. Or forced landscape / portrait. */
+    fun applyOrientation(a: Activity) {
+        val mode = a.getSharedPreferences("prayer", Context.MODE_PRIVATE).getString("orientation", "auto")
+        a.requestedOrientation = when (mode) {
+            "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            else -> if (isTv(a)) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    else ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+        }
+    }
 }

@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.RenderEffect
@@ -44,6 +45,15 @@ class MainActivity : Activity() {
     private val bgColor get() = prefs.getInt("bgColor", Color.BLACK)
     private val glassOn get() = prefs.getBoolean("glass", true)
     private val density get() = resources.displayMetrics.density
+    private val portrait get() = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+    /** Scales text to the screen: 1.0 on a 1080p TV, smaller on phones (portrait or landscape). */
+    private val screenScale: Float get() {
+        val w = resources.configuration.screenWidthDp.toFloat()
+        val h = resources.configuration.screenHeightDp.toFloat()
+        val s = if (w >= h) minOf(w / 960f, h / 540f) else minOf(w / 540f, h / 960f)
+        return s.coerceIn(0.5f, 1.6f)
+    }
     private val dimPercent get() = prefs.getInt("dim", 0)
     private val names = listOf("الفجر", "الشروق", "الظهر", "الجمعة", "العصر", "المغرب", "العشاء")
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
@@ -93,6 +103,7 @@ class MainActivity : Activity() {
         super.onCreate(b)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         adhan = AdhanPlayer(this)
+        Config.applyOrientation(this)
         setContentView(buildUi())
     }
 
@@ -101,7 +112,7 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        if (settingsOpened) { settingsOpened = false; applyChanges() }
+        if (settingsOpened) { settingsOpened = false; Config.applyOrientation(this); applyChanges() }
         handler.post(ticker)
     }
 
@@ -109,16 +120,17 @@ class MainActivity : Activity() {
     override fun onDestroy() { adhan.stop(); super.onDestroy() }
 
     private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
-        setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f; gravity = Gravity.CENTER
+        setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f * screenScale; gravity = Gravity.CENTER
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
     private fun buildUi(): View {
         nameViews.clear(); timeViews.clear(); rows.clear()
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+            // Landscape (TV): table and clock side by side. Portrait (phone): clock on top, table below.
+            orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(48, 24, 48, 24)
+            setPadding(dp(16), dp(if (portrait) 56 else 12), dp(16), dp(12))
         }
         // Right side (first child in RTL): prayer table.
         val table = LinearLayout(this).apply {
@@ -142,7 +154,6 @@ class MainActivity : Activity() {
             nameViews += n; timeViews += t; rows += row
             table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f))
         }
-        root.addView(table, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(8), dp(8), dp(8), dp(8)) })
 
         // Left side: title, dates, clock, countdown, verse.
         info = LinearLayout(this).apply {
@@ -162,7 +173,10 @@ class MainActivity : Activity() {
         for (v in listOf(title, hijri, greg, clock, countdown, verse, hint)) {
             info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
         }
-        root.addView(info, LinearLayout.LayoutParams(0, -1, 1.2f).apply { setMargins(dp(8), dp(8), dp(8), dp(8)) })
+        fun lp(w: Float) = (if (portrait) LinearLayout.LayoutParams(-1, 0, w) else LinearLayout.LayoutParams(0, -1, w))
+            .apply { setMargins(dp(8), dp(8), dp(8), dp(8)) }
+        if (portrait) { root.addView(info, lp(1f)); root.addView(table, lp(1.3f)) }
+        else { root.addView(table, lp(1f)); root.addView(info, lp(1.2f)) }
         updateTile()
 
         // Layers: background colour, wallpaper, dim overlay, content, settings button.
@@ -324,9 +338,15 @@ class MainActivity : Activity() {
         setContentView(buildUi())
         cachedDate = null
         load(ZonedDateTime.now(ZoneId.of(region.zone)))
+        PrayerWidget.updateAll(this)
     }
 
     private var settingsOpened = false
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyChanges()
+    }
 
     private fun openSettings() {
         settingsOpened = true

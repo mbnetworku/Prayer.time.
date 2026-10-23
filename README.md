@@ -1,6 +1,6 @@
 # Prayer Time TV (Android TV)
 
-Works on **Android 5.0 and newer** (TV boxes, TVs and phones), fully offline.
+Works on **Android 5.0 and newer** (TV boxes, TVs and phones), fully offline. On phones: portrait or landscape, plus a home-screen widget (long-press the home screen > Widgets > Prayer Times).
 
 Landscape prayer-times display: Arabic text, English (0-9) digits, adhan sound, region picker, offline calculation.
 

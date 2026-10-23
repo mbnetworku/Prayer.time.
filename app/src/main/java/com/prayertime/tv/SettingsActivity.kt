@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -38,6 +39,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         adhan = AdhanPlayer(this)
+        Config.applyOrientation(this)
         setContentView(build())
     }
 
@@ -218,20 +220,25 @@ class SettingsActivity : Activity() {
         header.addView(View(this), LinearLayout.LayoutParams(dp(80), 1))
         page.addView(header, LinearLayout.LayoutParams(-1, -2))
 
-        val main = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        // Landscape: side menu. Portrait (phone): menu as a scrollable row at the top.
+        val portrait = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val main = LinearLayout(this).apply { orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL }
         page.addView(main, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val menu = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(16), dp(12), dp(16))
+            orientation = if (portrait) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+            setPadding(dp(12), dp(if (portrait) 8 else 16), dp(12), dp(if (portrait) 8 else 16))
             background = if (glassOn) Config.glass(density, 0) else ColorDrawable(cardBg)
         }
-        main.addView(menu, LinearLayout.LayoutParams(dp(220), -1))
+        if (portrait) main.addView(HorizontalScrollView(this).apply { addView(menu) }, LinearLayout.LayoutParams(-1, -2))
+        else main.addView(menu, LinearLayout.LayoutParams(dp(220), -1))
 
         val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(32), dp(8), dp(32), dp(40))
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(if (portrait) 12 else 32), dp(8), dp(if (portrait) 12 else 32), dp(40))
         }
         val scroll = ScrollView(this).apply { addView(body) }
-        main.addView(scroll, LinearLayout.LayoutParams(0, -1, 1f))
+        main.addView(scroll, if (portrait) LinearLayout.LayoutParams(-1, 0, 1f) else LinearLayout.LayoutParams(0, -1, 1f))
 
         val tabs = listOf(
             t("عام", "General") to { b: LinearLayout -> pageGeneral(b) },
@@ -254,7 +261,8 @@ class SettingsActivity : Activity() {
                 setOnClickListener { show(i) }
             }
             items += v
-            menu.addView(v, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+            menu.addView(v, if (portrait) LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(6) }
+                else LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
         }
         show(tab.coerceIn(0, tabs.size - 1))
         return page
@@ -345,6 +353,14 @@ class SettingsActivity : Activity() {
         section(body, t("عام", "General"))
         dropdown(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn },
             { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
+        val modes = listOf("auto", "landscape", "portrait")
+        val tvNote = if (Config.isTv(this)) t(" (تم اكتشاف تلفاز)", " (TV detected)") else ""
+        chipGroup(body, t("اتجاه الشاشة", "Screen orientation") + tvNote,
+            listOf(t("تلقائي", "Auto"), t("أفقي (تلفاز)", "Landscape (TV)"), t("عمودي", "Portrait")), 3,
+            { modes.indexOf(prefs.getString("orientation", "auto")).coerceAtLeast(0) }) { pos ->
+            edit { putString("orientation", modes[pos]) }
+            Config.applyOrientation(this)
+        }
         row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
         row(body, t("عرض المواقيت فقط (إخفاء التاريخ والساعة)", "Show prayer times only (hide dates and clock)"),
             switchOf("timesOnly", false))

@@ -3,6 +3,9 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Home-screen widget** for phones/tablets: city, next prayer and today's six times on a glass background; refreshes after each prayer and when settings change; tap to open the app. Labels follow the device language.
+- **Orientation**: Settings > General > Screen orientation - **Auto** (TV detected -> landscape; phone/tablet -> follows the device), **Landscape (TV)** or **Portrait**.
+- Portrait layout: clock panel on top, prayer table below; text scales to the screen size (phones get smaller text, 1080p TV unchanged). Settings in portrait show the menu as a row at the top.
 - **Runs on Android 5.0 and newer** (was Android 8.0+): `minSdk` 21 with Java time desugaring; Hijri date uses the Umm al-Qura calendar on Android 7+ and an arithmetic Islamic calendar on Android 5-6 (use the Hijri adjustment if it is a day off); launcher icon for Android 5-7 added. The wallpaper blur needs Android 12+; on older versions the glass style still works without blur.
 - **Liquid glass style** (on by default): frosted translucent glass panels with soft light edges for the prayer table, clock panel, message card, settings button and next-prayer highlight, over a deep blue/purple/teal gradient. The settings screen uses the same glass cards, chips and buttons. The wallpaper is blurred behind the glass on Android 12+.
 - Settings > Appearance: switches for **Liquid glass style** and **Blur wallpaper**.
