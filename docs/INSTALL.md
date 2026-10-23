@@ -17,5 +17,5 @@ Open the folder in Android Studio and press Run, or run `gradle assembleDebug` (
 Play Protect warns about any app that is not from the Play Store, so the warning cannot be removed for a sideloaded APK.
 - Warning "Blocked by Play Protect / unknown developer": tap **More details** (or **Details**) -> **Install anyway**.
 - If there is no such button: on the TV open **Play Store -> profile -> Play Protect -> Settings** and turn off **Scan apps with Play Protect**, install, then turn it back on.
-- "App not installed" / conflict with an older version: **uninstall** the old Prayer Time app first (Settings -> Apps), then install the new APK. Builds from "Build 7" on use a fixed signing key, so later updates install over each other.
+- "App not installed" / conflict with an older version: **uninstall** the old Prayer Time app first (Settings -> Apps), then install the new APK. Builds from "Build 8" on use a fixed signing key, so later updates install over each other.
 - Make sure **Install unknown apps** is allowed for the app you open the APK with (file manager).
