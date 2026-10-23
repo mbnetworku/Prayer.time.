@@ -116,6 +116,39 @@ class SettingsActivity : Activity() {
         paint()
     }
 
+    /** Inline drop-down: shows the current value; clicking opens the list inside the page (no pop-up). */
+    private fun dropdown(body: LinearLayout, label: String, items: List<String>,
+                         selected: () -> Int, onPick: (Int) -> Unit) {
+        body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        val head = TextView(this).apply {
+            textSize = 17f; setTextColor(Color.WHITE); setPadding(dp(16), dp(12), dp(16), dp(12))
+            background = round(Color.parseColor("#232A35")); isClickable = true; isFocusable = true
+        }
+        fun refresh() { head.text = items[selected().coerceIn(0, items.size - 1)] + "   ▼" }
+        refresh()
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; visibility = View.GONE
+            background = round(cardBg); setPadding(dp(8), dp(8), dp(8), dp(8))
+        }
+        val views = ArrayList<TextView>()
+        fun paint() {
+            val sel = selected()
+            views.forEachIndexed { i, v -> v.background = if (i == sel) round(Color.parseColor("#2A5FA8")) else null }
+        }
+        items.forEachIndexed { i, label2 ->
+            val v = TextView(this).apply {
+                text = label2; textSize = 16f; setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(10), dp(16), dp(10)); isClickable = true; isFocusable = true
+                setOnClickListener { onPick(i); refresh(); list.visibility = View.GONE }
+            }
+            views += v
+            list.addView(v, LinearLayout.LayoutParams(-1, -2))
+        }
+        head.setOnClickListener { paint(); list.visibility = if (list.visibility == View.GONE) View.VISIBLE else View.GONE }
+        body.addView(head, LinearLayout.LayoutParams(-1, -2))
+        body.addView(list, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+    }
+
     private fun chipGroup(body: LinearLayout, label: String, items: List<String>, perRow: Int,
                           selected: () -> Int, onPick: (Int) -> Unit) {
         body.addView(text(label, 18f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -220,7 +253,7 @@ class SettingsActivity : Activity() {
 
     private fun pageGeneral(body: LinearLayout) {
         section(body, t("عام", "General"))
-        chipGroup(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn }, 3,
+        dropdown(body, t("المنطقة", "Region"), Regions.all.map { if (isAr) it.nameAr else it.nameEn },
             { prefs.getInt("region", 0) }) { pos -> edit { putInt("region", pos) } }
         row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
         row(body, t("عرض المواقيت فقط (إخفاء التاريخ والساعة)", "Show prayer times only (hide dates and clock)"),
@@ -233,6 +266,13 @@ class SettingsActivity : Activity() {
     private fun pageAdhan(body: LinearLayout) {
         section(body, t("الأذان", "Adhan"))
         row(body, t("تشغيل صوت الأذان", "Play adhan sound"), switchOf("sound", true))
+        val lengths = listOf(10, 30, 60, 120, 0)
+        chipGroup(body, t("مدة الأذان", "Adhan length"),
+            listOf(t("10 ثوانٍ", "10 sec"), t("30 ثانية", "30 sec"), t("دقيقة", "1 min"),
+                t("دقيقتان", "2 min"), t("الأذان كاملاً", "Full adhan")), 5,
+            { lengths.indexOf(prefs.getInt("azanLen", 0)).coerceAtLeast(0) }) { pos ->
+            edit { putInt("azanLen", lengths[pos]) }
+        }
         body.addView(text(t("اختيار الأذان (اضغط للاستماع)", "Choose adhan (tap to listen)"), 18f),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         azanBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }

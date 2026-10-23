@@ -32,7 +32,7 @@ class AdhanPlayer(private val ctx: Context) {
                     setOnCompletionListener { stop() }
                     start()
                 }
-                if (player != null) return
+                if (player != null) { limitLength(); return }
             } catch (_: Exception) { }
         }
         chime()
@@ -63,11 +63,18 @@ class AdhanPlayer(private val ctx: Context) {
                 prepare()
                 start()
             }
+            limitLength()
             return
         } catch (_: Exception) {
             player?.release(); player = null
         }
         chime()
+    }
+
+    /** Stops the adhan after the length chosen in settings (pref azanLen, seconds; 0 = full adhan). */
+    private fun limitLength() {
+        val sec = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getInt("azanLen", 0)
+        if (sec > 0) handler.postDelayed({ stop() }, sec * 1000L)
     }
 
     private fun chime() {

@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Settings > Adhan: **Adhan length** - 10 sec, 30 sec, 1 min, 2 min or full adhan (applies to prayer-time playback and to the preview).
+- Settings > General: the long region list is now an inline drop-down (shows the selected city; click to open the list inside the page, click a city to close it).
 - New app icon (adaptive launcher icon) and TV banner: gold crescent, star, white mosque dome and minaret on dark blue.
 - App name follows the device language: **مواقيت الصلاة** on Arabic devices, **Prayer Times** on English / other languages.
 - Settings: a fresh full-screen page (system bars hidden) with a side menu - General, Adhan, Appearance, Language - showing one category at a time. The last opened category is remembered.
