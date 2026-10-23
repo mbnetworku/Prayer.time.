@@ -30,7 +30,6 @@ class MainActivity : Activity() {
 
     private val blue = Color.parseColor("#8EC5FF")
     private val names = listOf("الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء")
-    private val iqama = listOf(25, 15, 0, 25, 10, 20) // minutes after adhan (0 = none)
     private val hijriMonths = listOf("محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
         "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة")
     private val days = mapOf(1 to "الاثنين", 2 to "الثلاثاء", 3 to "الأربعاء", 4 to "الخميس",
@@ -50,7 +49,6 @@ class MainActivity : Activity() {
     private lateinit var verse: TextView
     private val nameViews = ArrayList<TextView>()
     private val timeViews = ArrayList<TextView>()
-    private val iqamaViews = ArrayList<TextView>()
     private val rows = ArrayList<LinearLayout>()
 
     private var cachedDate: LocalDate? = null
@@ -98,7 +96,7 @@ class MainActivity : Activity() {
         // Right side (first child in RTL): prayer table.
         val table = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for ((t, w) in listOf("الصلاة" to 1.2f, "الأذان" to 1f, "الإقامة" to 0.8f)) {
+        for ((t, w) in listOf("الصلاة" to 1.2f, "الأذان" to 1f)) {
             head.addView(tv(16f).apply { text = t; alpha = 0.7f }, LinearLayout.LayoutParams(0, -2, w))
         }
         table.addView(head)
@@ -109,11 +107,9 @@ class MainActivity : Activity() {
             }
             val n = tv(34f, true).apply { text = names[i] }
             val t = tv(38f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
-            val q = tv(26f).apply { textDirection = View.TEXT_DIRECTION_LTR }
             row.addView(n, LinearLayout.LayoutParams(0, -2, 1.2f))
             row.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(q, LinearLayout.LayoutParams(0, -2, 0.8f))
-            nameViews += n; timeViews += t; iqamaViews += q; rows += row
+            nameViews += n; timeViews += t; rows += row
             table.addView(row, LinearLayout.LayoutParams(-1, 0, 1f))
         }
         root.addView(table, LinearLayout.LayoutParams(0, -1, 1f))
@@ -165,7 +161,6 @@ class MainActivity : Activity() {
         for (i in names.indices) {
             nameViews[i].text = names2[i]
             timeViews[i].text = hm(t.asList()[i])
-            iqamaViews[i].text = if (iqama[i] > 0) "${iqama[i]}’" else ""
         }
     }
     private var names2 = names
