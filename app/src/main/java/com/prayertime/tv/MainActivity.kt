@@ -52,7 +52,13 @@ class MainActivity : Activity() {
         "إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَوْقُوتًا",
         "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",
         "وَأَقِيمُوا الصَّلَاةَ وَآتُوا الزَّكَاةَ",
-        "قال ﷺ : من حسن إسلام المرء تركه ما لا يعنيه")
+        "قال ﷺ : من حسن إسلام المرء تركه ما لا يعنيه",
+        "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+        "اللهم إنك عفو تحب العفو فاعف عني",
+        "سبحان الله وبحمده، سبحان الله العظيم")
+    private val afterAdhanDua = "اللهم رب هذه الدعوة التامة والصلاة القائمة، آت محمداً الوسيلة والفضيلة، " +
+        "وابعثه مقاماً محموداً الذي وعدته"
+    private var lastAdhanAt = 0L
 
     private lateinit var info: LinearLayout
     private lateinit var title: TextView
@@ -100,7 +106,7 @@ class MainActivity : Activity() {
     override fun onDestroy() { adhan.stop(); super.onDestroy() }
 
     private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
-        setTextColor(c); textSize = size; gravity = Gravity.CENTER
+        setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f; gravity = Gravity.CENTER
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
@@ -137,13 +143,18 @@ class MainActivity : Activity() {
         title = tv(34f, true); hijri = tv(26f); greg = tv(22f)
         clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         countdown = tv(26f)
-        verse = tv(28f)
+        verse = tv(28f).apply {
+            setPadding(dp(24), dp(14), dp(24), dp(14))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(16).toFloat(); setColor(Color.argb(50, 255, 255, 255)); setStroke(dp(1), textColor)
+            }
+        }
         val hint = tv(14f).apply { text = "اضغط OK للإعدادات - أثناء الأذان: OK لإيقاف الصوت"; alpha = 0.5f }
         for (v in listOf(title, hijri, greg, clock, countdown, verse, hint)) {
             info.addView(v, LinearLayout.LayoutParams(-2, -2).apply { topMargin = 12; bottomMargin = 12 })
         }
         root.addView(info, LinearLayout.LayoutParams(0, -1, 1.2f))
-        verse.text = verses[(tick / 30) % verses.size]
+        updateTile()
 
         // Layers: background colour, wallpaper, dim overlay, content, settings button.
         val frame = FrameLayout(this).apply {
@@ -255,10 +266,12 @@ class MainActivity : Activity() {
                 val key = "${now.toLocalDate()}-$i"
                 if (since in 0..30 && key != lastFired) {
                     lastFired = key
+                    lastAdhanAt = System.currentTimeMillis()
                     if (soundOn) playAzan()
                 }
             }
-            if (tick++ % 30 == 0) verse.text = verses[(tick / 30) % verses.size]
+            tick++
+            updateTile()
             handler.postDelayed(this, 1000)
         }
     }
@@ -276,6 +289,18 @@ class MainActivity : Activity() {
     }
 
     private fun playAzan() = adhan.playSelected()
+
+    /** Rotating message card ("live tile"): after-adhan dua for 5 minutes, otherwise built-in + user messages. */
+    private fun updateTile() {
+        if (prefs.getBoolean("tileAfterAdhan", true) && System.currentTimeMillis() - lastAdhanAt < 5 * 60_000) {
+            verse.visibility = View.VISIBLE; verse.text = afterAdhanDua; return
+        }
+        val list = (if (prefs.getBoolean("tilesBuiltin", true)) verses else emptyList()) + Config.customTiles(prefs)
+        if (list.isEmpty()) { verse.visibility = View.GONE; return }
+        verse.visibility = View.VISIBLE
+        val every = prefs.getInt("tileSeconds", 30).coerceAtLeast(5)
+        verse.text = list[(tick / every) % list.size]
+    }
 
     /** Re-creates the screen so changes made in settings show immediately. */
     private fun applyChanges() {

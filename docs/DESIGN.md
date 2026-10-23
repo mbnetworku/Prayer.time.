@@ -11,3 +11,4 @@
 - `SettingsActivity.kt` is the only settings UI (built in code, language pref `lang` = `ar`/`en`, strings via `t(ar, en)`). `Config.kt` holds shared palette, wallpaper presets and the list of adhan resources. MainActivity rebuilds itself in `onResume` after returning from settings.
 - App name: `res/values/strings.xml` (English, default) and `res/values-ar/strings.xml` (Arabic). Icon: `mipmap-anydpi-v26/ic_launcher*.xml` (adaptive: `drawable/ic_launcher_background.xml` + `ic_launcher_foreground.xml`); TV banner: `drawable/banner.xml`.
 - SettingsActivity pages: `pageGeneral`, `pageAdhan`, `pageAppearance`, `pageLanguage`; selected tab saved in pref `settingsTab`.
+- Live tile: `MainActivity.updateTile()` - prefs `tilesBuiltin`, `tileAfterAdhan`, `tileSeconds`, `tiles` (JSON array via `Config.customTiles/saveTiles`). Text size: pref `fontScale` (percent) applied in `MainActivity.tv()`.

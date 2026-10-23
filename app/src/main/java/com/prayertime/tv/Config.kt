@@ -1,6 +1,8 @@
 package com.prayertime.tv
 
+import android.content.SharedPreferences
 import android.graphics.Color
+import org.json.JSONArray
 
 /** Shared by the main screen and the settings screen. */
 object Config {
@@ -24,4 +26,14 @@ object Config {
     /** Adhan files are the raw resources named adhan, adhan_2, adhan_3, ... */
     fun azanOptions(): List<String> =
         R.raw::class.java.fields.map { it.name }.filter { it == "adhan" || it.startsWith("adhan_") }.sorted()
+
+    /** User's own on-screen messages / duas (pref "tiles", JSON array of strings). */
+    fun customTiles(p: SharedPreferences): List<String> = try {
+        val a = JSONArray(p.getString("tiles", "[]") ?: "[]")
+        List(a.length()) { a.getString(it) }
+    } catch (_: Exception) { emptyList() }
+
+    fun saveTiles(p: SharedPreferences, list: List<String>) {
+        p.edit().putString("tiles", JSONArray(list).toString()).apply()
+    }
 }

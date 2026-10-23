@@ -220,6 +220,7 @@ class SettingsActivity : Activity() {
             t("عام", "General") to { b: LinearLayout -> pageGeneral(b) },
             t("الأذان", "Adhan") to { b: LinearLayout -> pageAdhan(b) },
             t("المظهر", "Appearance") to { b: LinearLayout -> pageAppearance(b) },
+            t("الأدعية والرسائل", "Duas & messages") to { b: LinearLayout -> pageTiles(b) },
             t("اللغة", "Language") to { b: LinearLayout -> pageLanguage(b) })
         val items = ArrayList<TextView>()
         fun show(i: Int) {
@@ -239,6 +240,48 @@ class SettingsActivity : Activity() {
         }
         show(tab.coerceIn(0, tabs.size - 1))
         return page
+    }
+
+    private fun pageTiles(body: LinearLayout) {
+        section(body, t("الأدعية والرسائل على الشاشة", "Duas & messages on screen"))
+        row(body, t("عرض الآيات والأدعية المدمجة", "Show built-in verses and duas"), switchOf("tilesBuiltin", true))
+        row(body, t("عرض دعاء ما بعد الأذان (5 دقائق)", "Show the after-adhan dua (5 minutes)"), switchOf("tileAfterAdhan", true))
+        val secs = listOf(10, 20, 30, 60)
+        chipGroup(body, t("مدة عرض كل رسالة", "Time per message"), secs.map { t("$it ثانية", "$it sec") }, 4,
+            { secs.indexOf(prefs.getInt("tileSeconds", 30)).coerceAtLeast(0) }) { pos ->
+            edit { putInt("tileSeconds", secs[pos]) }
+        }
+
+        body.addView(text(t("رسائلك وأدعيتك", "Your messages and duas"), 18f),
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        val listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(listBox, LinearLayout.LayoutParams(-1, -2))
+        fun refresh() {
+            listBox.removeAllViews()
+            val items = Config.customTiles(prefs)
+            if (items.isEmpty()) listBox.addView(text(t("لا توجد رسائل بعد", "No messages yet"), 16f, c = Color.GRAY))
+            items.forEachIndexed { i, msg ->
+                val r = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(cardBg)
+                }
+                r.addView(text(msg, 17f), LinearLayout.LayoutParams(0, -2, 1f))
+                r.addView(button(t("حذف", "Delete")) {
+                    Config.saveTiles(prefs, items.filterIndexed { k, _ -> k != i }); refresh()
+                })
+                listBox.addView(r, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            }
+        }
+        refresh()
+        val input = EditText(this).apply {
+            hint = t("اكتب دعاءً أو رسالة…", "Type a dua or message…")
+            setTextColor(Color.WHITE); setHintTextColor(Color.GRAY); minLines = 2
+        }
+        body.addView(input, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        wide(body, button(t("إضافة", "Add")) {
+            val msg = input.text.toString().trim()
+            if (msg.isNotEmpty()) { Config.saveTiles(prefs, Config.customTiles(prefs) + msg); input.setText(""); refresh() }
+        })
     }
 
     private fun pageLanguage(body: LinearLayout) {
@@ -287,6 +330,11 @@ class SettingsActivity : Activity() {
 
     private fun pageAppearance(body: LinearLayout) {
         section(body, t("المظهر", "Appearance"))
+        val scales = listOf(80, 90, 100, 110, 125, 150)
+        chipGroup(body, t("حجم الخط", "Text size"), scales.map { "$it%" }, 6,
+            { scales.indexOf(prefs.getInt("fontScale", 100)).coerceAtLeast(0) }) { pos ->
+            edit { putInt("fontScale", scales[pos]) }
+        }
         colorRow(body, t("لون النص", "Text color"), "textColor", Config.defText)
         colorRow(body, t("لون تمييز الصلاة القادمة", "Next-prayer highlight color"), "hlColor", Config.defHighlight)
         colorRow(body, t("لون الخلفية", "Background color"), "bgColor", Color.BLACK)

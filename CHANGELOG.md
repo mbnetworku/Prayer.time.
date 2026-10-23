@@ -3,6 +3,9 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Settings > Appearance: **Text size** for the main screen (80 %, 90 %, 100 %, 110 %, 125 %, 150 %).
+- Main screen: the verse line is now a rotating **message card (live tile)**.
+- New settings page **Duas & messages**: show/hide the built-in verses and duas, time per message (10/20/30/60 s), show the after-adhan dua for 5 minutes after each adhan, and add / delete your own duas or messages.
 - Settings > Adhan: **Adhan length** - 10 sec, 30 sec, 1 min, 2 min or full adhan (applies to prayer-time playback and to the preview).
 - Settings > General: the long region list is now an inline drop-down (shows the selected city; click to open the list inside the page, click a city to close it).
 - New app icon (adaptive launcher icon) and TV banner: gold crescent, star, white mosque dome and minaret on dark blue.
