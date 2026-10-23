@@ -16,7 +16,8 @@ import android.graphics.drawable.Drawable
  * "Liquid glass" panel: a mostly clear body, a soft light sheen across the top,
  * and a bright rim that catches light at the top-left and bottom-right corners.
  */
-class GlassDrawable(private val density: Float, private val radiusDp: Int, private val tint: Int? = null) : Drawable() {
+class GlassDrawable(private val density: Float, private val radiusDp: Int, private val tint: Int? = null,
+                    private val strong: Boolean = false) : Drawable() {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val sheen = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -39,7 +40,8 @@ class GlassDrawable(private val density: Float, private val radiusDp: Int, priva
         // Body: very light, slightly brighter at the top.
         fill.shader = if (tint != null)
             LinearGradient(x, y, x, y + h, tinted(150), tinted(90), Shader.TileMode.CLAMP)
-        else LinearGradient(x, y, x, y + h, white(34), white(10), Shader.TileMode.CLAMP)
+        else if (strong) LinearGradient(x, y, x, y + h, white(72), white(30), Shader.TileMode.CLAMP)
+        else LinearGradient(x, y, x, y + h, white(30), white(8), Shader.TileMode.CLAMP)
         // Top sheen: soft reflection fading out by the middle.
         sheen.shader = LinearGradient(x, y, x, y + minOf(h * 0.55f, 160 * density),
             white(48), white(0), Shader.TileMode.CLAMP)

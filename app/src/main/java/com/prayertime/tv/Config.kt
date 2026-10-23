@@ -45,9 +45,37 @@ object Config {
 
     // ---- Liquid glass style (pref "glass", default on) ----------------------------------
 
-    /** Liquid glass panel (see GlassDrawable): clear body, top sheen, light-catching rim. */
-    fun glass(density: Float, radiusDp: Int, tint: Int? = null): android.graphics.drawable.Drawable =
-        GlassDrawable(density, radiusDp, tint)
+    /** Liquid glass panel (see GlassDrawable): clear body, top sheen, light-catching rim. strong = brighter clear glass. */
+    fun glass(density: Float, radiusDp: Int, tint: Int? = null, strong: Boolean = false): android.graphics.drawable.Drawable =
+        GlassDrawable(density, radiusDp, tint, strong)
+
+    /** True when the user picked their own wallpaper image: glass then stays clear (no colour tint). */
+    fun hasImage(ctx: Context) = (ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
+        .getString("bgImage", "") ?: "").startsWith("uri:")
+
+    /** Shows the chosen wallpaper (gradient preset or the user's image) in [iv]. */
+    fun loadWallpaper(ctx: android.content.Context, iv: android.widget.ImageView) {
+        val prefs = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
+        val v = prefs.getString("bgImage", "") ?: ""
+        try {
+            when {
+                v.startsWith("preset:") -> {
+                    val c = Config.presets[v.removePrefix("preset:").toInt().coerceIn(0, Config.presets.size - 1)].colors
+                    iv.setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c))
+                }
+                v.startsWith("uri:") -> {
+                    val uri = android.net.Uri.parse(v.removePrefix("uri:"))
+                    val b = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    ctx.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, b) }
+                    var sample = 1
+                    while (b.outWidth / sample > 2000) sample *= 2
+                    val o = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+                    ctx.contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(android.graphics.BitmapFactory.decodeStream(it, null, o)) }
+                }
+            }
+        } catch (_: Exception) { /* image gone or unreadable: fall back to the plain colour */ }
+    }
+
 
     /** Deep backdrop with soft coloured glows, so the glass has something to refract. */
     fun glassBackground(): android.graphics.drawable.Drawable {

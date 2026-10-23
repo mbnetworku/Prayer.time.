@@ -55,7 +55,7 @@ class SettingsActivity : Activity() {
         super.onCreate(b)
         adhan = AdhanPlayer.get(this)
         Config.applyOrientation(this)
-        setContentView(build())
+        setContentView(withWallpaper(build()))
     }
 
     override fun onPause() {
@@ -68,6 +68,18 @@ class SettingsActivity : Activity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+    }
+
+    /** Puts the user's wallpaper (image or gradient) behind the settings, slightly darkened. */
+    private fun withWallpaper(page: View): View {
+        if (prefs.getString("bgImage", "").isNullOrEmpty()) return page
+        val frame = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val wall = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+        Config.loadWallpaper(this, wall)
+        frame.addView(wall, android.widget.FrameLayout.LayoutParams(-1, -1))
+        frame.addView(View(this).apply { setBackgroundColor(Color.argb(90, 0, 0, 0)) }, android.widget.FrameLayout.LayoutParams(-1, -1))
+        frame.addView(page, android.widget.FrameLayout.LayoutParams(-1, -1))
+        return frame
     }
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
@@ -289,7 +301,11 @@ class SettingsActivity : Activity() {
     private fun build(): View {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = if (glassOn) Config.glassBackground() else ColorDrawable(pageBg)
+            background = when {
+                prefs.getString("bgImage", "").isNullOrEmpty().not() -> null // the wallpaper shows through
+                glassOn -> Config.glassBackground()
+                else -> ColorDrawable(pageBg)
+            }
             layoutDirection = if (isAr) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         }
 

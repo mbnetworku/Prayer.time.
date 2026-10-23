@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- With your own wallpaper image, the glass stays clear: the next-prayer card and highlighted row use bright clear glass instead of the blue/purple tint, panels are more transparent, and the settings screen shows your image behind it instead of the purple backdrop.
 - **New liquid glass look**: panels are now drawn by `GlassDrawable` - a mostly clear body, a soft light sheen across the top, an inner glow and a bright rim that catches light at the corners (instead of flat translucent boxes). The backdrop is a deep gradient with soft blue, purple and teal glows behind the glass. Applies to the home screen, settings and highlights.
 - **Home screen redesigned**: top bar with city, Hijri/Gregorian dates and the settings button; large clock; a highlighted **next prayer** card with name, time, big countdown and a progress bar from the previous prayer; message card below. The prayer list uses rows with dots - past prayers are dimmed, the next prayer is highlighted. Portrait: clock and next-prayer card on top, list below.
 - **Background adhan**: an exact alarm starts the adhan at each prayer (Fajr, Dhuhr, Asr, Maghrib, Isha) even when the app is closed or the screen is off; it plays through a foreground service with the Pause/Resume/Stop notification. Alarms are re-scheduled after reboot, app update, clock or time-zone change, and whenever settings change. The open screen and the alarm never play the same adhan twice. Skipped if the device was off more than 10 minutes past the prayer.

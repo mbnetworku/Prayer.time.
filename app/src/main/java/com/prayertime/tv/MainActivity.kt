@@ -192,7 +192,7 @@ class MainActivity : Activity() {
         clock = tv(if (portrait) 64f else 92f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
         val nextCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            background = if (glassOn) Config.glass(density, 24, highlightColor)
+            background = if (glassOn) (if (Config.hasImage(this)) Config.glass(density, 24, null, true) else Config.glass(density, 24, highlightColor))
                 else GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(24).toFloat() }
             setPadding(dp(24), dp(14), dp(24), dp(16))
         }
@@ -234,7 +234,7 @@ class MainActivity : Activity() {
             if (glassOn && !prefs.contains("bgColor")) background = Config.glassBackground() else setBackgroundColor(bgColor)
         }
         val wall = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
-        loadWallpaper(wall)
+        Config.loadWallpaper(this, wall)
         // Frosted look: blur the wallpaper behind the glass panels (Android 12+).
         if (glassOn && prefs.getBoolean("blurWall", true) && Build.VERSION.SDK_INT >= 31)
             wall.setRenderEffect(RenderEffect.createBlurEffect(dp(18).toFloat(), dp(18).toFloat(), Shader.TileMode.CLAMP))
@@ -247,26 +247,6 @@ class MainActivity : Activity() {
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
 
-    private fun loadWallpaper(iv: ImageView) {
-        val v = prefs.getString("bgImage", "") ?: ""
-        try {
-            when {
-                v.startsWith("preset:") -> {
-                    val c = Config.presets[v.removePrefix("preset:").toInt().coerceIn(0, Config.presets.size - 1)].colors
-                    iv.setImageDrawable(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c))
-                }
-                v.startsWith("uri:") -> {
-                    val uri = Uri.parse(v.removePrefix("uri:"))
-                    val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, b) }
-                    var sample = 1
-                    while (b.outWidth / sample > 2000) sample *= 2
-                    val o = BitmapFactory.Options().apply { inSampleSize = sample }
-                    contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(BitmapFactory.decodeStream(it, null, o)) }
-                }
-            }
-        } catch (_: Exception) { /* image gone or unreadable: fall back to the plain colour */ }
-    }
 
     private fun hm(h: Double): String = if (h.isNaN()) "--:--" else {
         val tot = Math.round(h * 60).toInt().let { (it % 1440 + 1440) % 1440 }
@@ -359,7 +339,7 @@ class MainActivity : Activity() {
                 val passed = today.getOrNull(i)?.let { !it.isAfter(now) } ?: false
                 rows[i].background = when {
                     i != next -> null
-                    glassOn -> Config.glass(density, 18, highlightColor)
+                    glassOn -> if (Config.hasImage(this@MainActivity)) Config.glass(density, 18, null, true) else Config.glass(density, 18, highlightColor)
                     else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(18).toFloat() }
                 }
                 rows[i].alpha = if (passed && i != next) 0.45f else 1f
