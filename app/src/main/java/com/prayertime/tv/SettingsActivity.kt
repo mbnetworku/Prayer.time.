@@ -360,6 +360,12 @@ class SettingsActivity : Activity() {
             Config.applyOrientation(this)
         }
         row(body, t("نظام 24 ساعة", "24-hour clock"), switchOf("h24", false))
+        val ampm = listOf("full", "short", "none")
+        chipGroup(body, t("صباحاً / مساءً (نظام 12 ساعة)", "AM / PM label (12-hour clock)"),
+            listOf("صباحاً / مساءً", "ص / م", t("بدون", "None")), 3,
+            { ampm.indexOf(prefs.getString("ampm", "full")).coerceAtLeast(0) }) { pos ->
+            edit { putString("ampm", ampm[pos]) }
+        }
         row(body, t("عرض المواقيت فقط (إخفاء التاريخ والساعة)", "Show prayer times only (hide dates and clock)"),
             switchOf("timesOnly", false))
         chipGroup(body, t("تعديل التاريخ الهجري (أيام)", "Hijri date adjustment (days)"), listOf("-1", "0", "+1"), 3,

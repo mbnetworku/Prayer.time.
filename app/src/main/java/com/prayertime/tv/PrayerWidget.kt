@@ -60,6 +60,12 @@ class PrayerWidget : AppWidgetProvider() {
                 return String.format(Locale.US, "%02d:%02d", hh, tot % 60)
             }
 
+            fun period(h: Double): String {
+                if (use24 || h.isNaN() || prefs.getString("ampm", "full") == "none") return ""
+                val am = ((Math.round(h * 60).toInt() % 1440 + 1440) % 1440) < 720
+                return if (ar) (if (am) " ص" else " م") else (if (am) " AM" else " PM")
+            }
+
             val today = now.toLocalDate()
             val t = hours(today)
             var next = t.indices.firstOrNull { !t[it].isNaN() && at(today, t[it]).isAfter(now) }
@@ -72,7 +78,7 @@ class PrayerWidget : AppWidgetProvider() {
             for (id in widgetIds) {
                 val v = RemoteViews(ctx.packageName, R.layout.widget_prayer)
                 v.setTextViewText(R.id.city, if (ar) r.nameAr else r.nameEn)
-                v.setTextViewText(R.id.next, (if (ar) "القادمة: " else "Next: ") + names[next] + "  " + hm(nextHours))
+                v.setTextViewText(R.id.next, (if (ar) "القادمة: " else "Next: ") + names[next] + "  " + hm(nextHours) + period(nextHours))
                 ids.forEachIndexed { i, (n, tv) ->
                     v.setTextViewText(n, names[i]); v.setTextViewText(tv, hm(t[i]))
                 }

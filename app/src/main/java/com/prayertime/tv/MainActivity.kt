@@ -15,6 +15,9 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -151,7 +154,7 @@ class MainActivity : Activity() {
                 setPadding(16, 0, 16, 0)
             }
             val n = tv(34f, true).apply { text = names[i] }
-            val t = tv(38f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
+            val t = tv(38f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
             row.addView(n, LinearLayout.LayoutParams(0, -2, 1.2f))
             row.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             nameViews += n; timeViews += t; rows += row
@@ -164,7 +167,7 @@ class MainActivity : Activity() {
             if (glassOn) { background = Config.glass(density, 28); setPadding(dp(16), dp(12), dp(16), dp(12)) }
         }
         title = tv(34f, true); hijri = tv(26f); greg = tv(22f)
-        clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_LTR }
+        clock = tv(80f, true).apply { textDirection = View.TEXT_DIRECTION_RTL }
         countdown = tv(26f)
         verse = tv(28f).apply {
             setPadding(dp(24), dp(14), dp(24), dp(14))
@@ -237,6 +240,28 @@ class MainActivity : Activity() {
         String.format(Locale.US, "%02d:%02d", hh, mm)
     }
 
+    /** صباحاً / مساءً (or ص / م) after a time in 12-hour mode; pref "ampm" = full / short / none. */
+    private fun period(h: Double): String {
+        if (use24 || h.isNaN()) return ""
+        val am = ((Math.round(h * 60).toInt() % 1440 + 1440) % 1440) < 720
+        return when (prefs.getString("ampm", "full")) {
+            "none" -> ""
+            "short" -> if (am) "ص" else "م"
+            else -> if (am) "صباحاً" else "مساءً"
+        }
+    }
+
+    /** Time with the period word in smaller text, e.g. "04:24 صباحاً". */
+    private fun withPeriod(time: String, h: Double, ratio: Float): CharSequence {
+        val p = period(h)
+        if (p.isEmpty()) return time
+        val sb = SpannableStringBuilder(time).append(" ")
+        val start = sb.length
+        sb.append(p)
+        sb.setSpan(RelativeSizeSpan(ratio), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return sb
+    }
+
     private fun load(now: ZonedDateTime) {
         val r = region
         val zone = ZoneId.of(r.zone)
@@ -266,7 +291,7 @@ class MainActivity : Activity() {
         rows[3].visibility = if (friday) View.VISIBLE else View.GONE
         for (i in names.indices) {
             nameViews[i].text = names2[i]
-            timeViews[i].text = hm(hours[i])
+            timeViews[i].text = withPeriod(hm(hours[i]), hours[i], 0.45f)
         }
     }
     private var names2 = names
@@ -276,7 +301,8 @@ class MainActivity : Activity() {
             val now = ZonedDateTime.now(ZoneId.of(region.zone))
             info.visibility = if (timesOnly) View.GONE else View.VISIBLE
             if (cachedDate != now.toLocalDate() || cachedRegion != prefs.getInt("region", 0)) load(now)
-            clock.text = String.format(Locale.US, "%s:%02d", hm(now.hour + now.minute / 60.0), now.second)
+            val nowH = now.hour + now.minute / 60.0
+            clock.text = withPeriod(String.format(Locale.US, "%s:%02d", hm(nowH), now.second), nowH, 0.35f)
 
             var next = today.indexOfFirst { it != null && it.isAfter(now) }
             val nextTime = if (next >= 0) today[next] else tomorrowFajr
