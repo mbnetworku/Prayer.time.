@@ -23,13 +23,39 @@ object AdhanNotification {
     private val namesAr = listOf("الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء")
     private val namesEn = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
 
-    /** Name of the prayer whose time just came (from the last adhan key "date-index"), or null. */
-    private fun prayerText(ctx: Context): String? {
-        val key = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getString("lastAdhanKey", "") ?: ""
+    private val green = android.graphics.Color.parseColor("#30D158")
+
+    /** Bilingual text for the prayer whose time just came (from the last adhan key "yyyy-MM-dd-index"). */
+    private class Info(val title: String, val textAr: String, val textEn: String, val time: String)
+
+    private fun prayerInfo(ctx: Context): Info? {
+        val p = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
+        val key = p.getString("lastAdhanKey", "") ?: ""
         val k = key.substringAfterLast('-').toIntOrNull() ?: return null
-        val ar = Locale.getDefault().language == "ar"
-        val n = (if (ar) namesAr else namesEn).getOrNull(k) ?: return null
-        return if (ar) "حان وقت صلاة $n" else "It's time for $n prayer"
+        val ar = namesAr.getOrNull(k) ?: return null
+        val en = namesEn.getOrNull(k) ?: return null
+        val time = try {
+            val h = Times.hours(ctx, java.time.LocalDate.parse(key.substring(0, 10)))[k]
+            formatTime(p, h)
+        } catch (_: Exception) { "" }
+        return Info("$ar  •  $en", "حان وقت صلاة $ar", "It's time for $en prayer", time)
+    }
+
+    private fun formatTime(p: android.content.SharedPreferences, h: Double): String {
+        if (h.isNaN()) return ""
+        val tot = (Math.round(h * 60).toInt() % 1440 + 1440) % 1440
+        var hh = tot / 60
+        val mm = tot % 60
+        if (p.getBoolean("h24", false)) return String.format(Locale.US, "%02d:%02d", hh, mm)
+        val am = hh < 12
+        hh %= 12; if (hh == 0) hh = 12
+        val arabic = Locale.getDefault().language == "ar"
+        val period = when (p.getString("ampm", "short")) {
+            "none" -> ""
+            "full" -> if (arabic) (if (am) " صباحاً" else " مساءً") else (if (am) " AM" else " PM")
+            else -> if (arabic) (if (am) " ص" else " م") else (if (am) " AM" else " PM")
+        }
+        return String.format(Locale.US, "%02d:%02d", hh, mm) + period
     }
 
     /** A plain notification (message + default notification sound) for when the adhan sound is off. */
@@ -44,10 +70,16 @@ object AdhanNotification {
                 NotificationManager.IMPORTANCE_DEFAULT))
         }
         val open = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), flags())
+        val info = prayerInfo(ctx)
+        val title = info?.let { if (it.time.isNotEmpty()) it.title + "  —  " + it.time else it.title }
+            ?: if (ar) "مواقيت الصلاة" else "Prayer Times"
+        val body = info?.let { it.textAr + "\n" + it.textEn } ?: "حان وقت الصلاة\nIt's prayer time"
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, "reminder") else Notification.Builder(ctx)
         b.setSmallIcon(R.drawable.ic_stat_adhan)
-            .setContentTitle(if (ar) "مواقيت الصلاة" else "Prayer Times")
-            .setContentText(prayerText(ctx) ?: if (ar) "حان وقت الصلاة" else "It's prayer time")
+            .setColor(green)
+            .setContentTitle(title)
+            .setContentText(body.replace("\n", " · "))
+            .setStyle(Notification.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(open)
         nm.notify(1002, b.build())
@@ -75,14 +107,17 @@ object AdhanNotification {
             Intent(ctx, AdhanActionReceiver::class.java).setAction(a), flags())
         val open = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), flags())
 
+        val info = prayerInfo(ctx)
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, CHANNEL) else Notification.Builder(ctx)
         b.setSmallIcon(R.drawable.ic_stat_adhan)
-            .setContentTitle(if (ar) "الأذان" else "Adhan")
+            .setColor(green)
+            .setContentTitle(info?.title ?: "الأذان  •  Adhan")
             .setContentText(when {
-                paused && ar -> "متوقف مؤقتاً"
-                paused -> "Paused"
-                else -> prayerText(ctx) ?: if (ar) "يُرفع الأذان الآن" else "Adhan is playing"
+                paused -> "متوقف مؤقتاً · Paused"
+                info != null -> info.textAr + " · " + info.textEn
+                else -> "يُرفع الأذان الآن · Adhan is playing"
             })
+            .setSubText(info?.time?.takeIf { it.isNotEmpty() })
             .setOngoing(!paused)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
