@@ -496,6 +496,14 @@ class SettingsActivity : Activity() {
         row(body, t("تمويه صورة الخلفية", "Blur wallpaper"), switchOf("blurWall", true), t("أندرويد 12 وأحدث", "Android 12 and newer"))
         row(body, t("خط التطبيق الخاص", "App's own font"), switchOf("appFont", true) { recreate() },
             t("خط موحّد على كل الأجهزة", "The same font on every device"))
+        if (prefs.getBoolean("appFont", true)) {
+            choices(body, t("نوع الخط", "Font"), Config.fonts.map { if (isAr) it.ar else it.en }, if (portrait) 1 else 2,
+                { Config.fonts.indexOfFirst { it.key == Config.fontKey(this) }.coerceAtLeast(0) },
+                t("يُطبَّق فوراً على التطبيق كله", "Applies to the whole app straight away")) { pos ->
+                edit { putString("fontFamily", Config.fonts[pos].key) }
+                recreate()
+            }
+        }
         row(body, t("اتباع حجم خط الجهاز", "Follow device text size"), switchOf("systemTextSize", false) { recreate() },
             t("مغلق = حجم ثابت لا يتأثر بإعداد الجهاز", "Off = fixed size, not affected by the device setting"))
         val scales = listOf(80, 90, 100, 110, 125, 150)

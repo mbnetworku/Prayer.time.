@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Choose the Arabic font**: Settings > Appearance > Font - Tajawal (modern, default), Almarai (clean), Amiri (classic Naskh) or Scheherazade New (traditional). All four are bundled (SIL Open Font License, texts included) and apply to the whole app, including the widget-independent screens, as soon as you pick one.
 - Code-check (lint) clean-up: the alarm code is now guarded for Android 5 (API 21); boot receiver not exported; orientation chosen in Settings only (manifest no longer locks it); themed (monochrome) launcher icon for Android 13+; widget layout baseline option; documented intentional warnings.
 - Full-screen mode now uses the current Android API (WindowInsetsController, Android 11+) instead of the deprecated system-UI flags (kept for Android 5-10); the lint findings are printed in the build log.
 - **Automatic tests** (`app/src/test/.../PrayerCalcTest.kt`, run on every build): Bahrain times must match the mosque display photo within 2 minutes; all 34 regions must give six valid, correctly ordered times on 4 dates of the year; Umm al-Qura Isha = Maghrib + 90 min; every region has an Arabic and an English name. A **lint** code check prints its report in the build log.

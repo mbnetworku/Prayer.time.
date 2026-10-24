@@ -123,17 +123,30 @@ object Config {
 
     // ---- App font and text size ----------------------------------------------------------
 
-    private var regularFont: android.graphics.Typeface? = null
-    private var boldFont: android.graphics.Typeface? = null
+    /** Fonts bundled in assets/fonts (all SIL Open Font License): key, display names, file prefix. */
+    class FontChoice(val key: String, val ar: String, val en: String)
+    val fonts = listOf(
+        FontChoice("Tajawal", "تجوّل (عصري)", "Tajawal (modern)"),
+        FontChoice("Almarai", "المرعي (واضح)", "Almarai (clean)"),
+        FontChoice("Amiri", "أميري (نسخ كلاسيكي)", "Amiri (classic Naskh)"),
+        FontChoice("ScheherazadeNew", "شهرزاد (تقليدي)", "Scheherazade (traditional)"))
 
-    /** The app's own font (Tajawal, SIL OFL) from assets/fonts, or null to use the device font (pref "appFont"). */
+    private val fontCache = HashMap<String, android.graphics.Typeface>()
+
+    /** The font family chosen in Settings (pref "fontFamily"). */
+    fun fontKey(ctx: Context): String {
+        val k = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getString("fontFamily", "Tajawal") ?: "Tajawal"
+        return if (fonts.any { it.key == k }) k else "Tajawal"
+    }
+
+    /** The app's own font from assets/fonts, or null to use the device font (pref "appFont"). */
     fun font(ctx: Context, bold: Boolean): android.graphics.Typeface? {
         if (!ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getBoolean("appFont", true)) return null
-        try {
-            if (regularFont == null) regularFont = android.graphics.Typeface.createFromAsset(ctx.assets, "fonts/Tajawal-Regular.ttf")
-            if (boldFont == null) boldFont = android.graphics.Typeface.createFromAsset(ctx.assets, "fonts/Tajawal-Bold.ttf")
-        } catch (_: Throwable) { return null }
-        return if (bold) boldFont else regularFont
+        val name = fontKey(ctx) + (if (bold) "-Bold" else "-Regular")
+        fontCache[name]?.let { return it }
+        return try {
+            android.graphics.Typeface.createFromAsset(ctx.assets, "fonts/$name.ttf").also { fontCache[name] = it }
+        } catch (_: Throwable) { null }
     }
 
     /**

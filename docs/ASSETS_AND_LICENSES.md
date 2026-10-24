@@ -20,8 +20,14 @@ praytimes.org-style astronomical formulas written for this project), the code an
 not copyrightable; no third-party libraries are used (only Android's own libraries and the Google desugaring library
 `desugar_jdk_libs`, Apache-2.0).
 
-## Font
-`app/src/main/assets/fonts/Tajawal-Regular.ttf` and `Tajawal-Bold.ttf` — Tajawal by Boutros International,
-licensed under the **SIL Open Font License 1.1** (full text in `app/src/main/assets/fonts/OFL.txt`). The license allows
-bundling the font in an app, including commercially, as long as the license text ships with it (it does) and the font
-is not sold on its own.
+## Fonts
+All four bundled fonts are licensed under the **SIL Open Font License 1.1**, which allows bundling them in an app (also
+commercially) as long as the license text ships with them (it does, as `OFL-*.txt` next to the fonts) and the fonts are
+not sold on their own. Files are in `app/src/main/assets/fonts/`.
+
+| Font | Files | Designer / project | License text |
+|---|---|---|---|
+| Tajawal | `Tajawal-Regular/Bold.ttf` | Boutros International | `OFL-Tajawal.txt` |
+| Almarai | `Almarai-Regular/Bold.ttf` | The Almarai Project Authors | `OFL-Almarai.txt` |
+| Amiri | `Amiri-Regular/Bold.ttf` | The Amiri Project Authors | `OFL-Amiri.txt` |
+| Scheherazade New | `ScheherazadeNew-Regular/Bold.ttf` | SIL Global | `OFL-ScheherazadeNew.txt` |
