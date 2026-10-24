@@ -3,6 +3,7 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- Full-screen mode now uses the current Android API (WindowInsetsController, Android 11+) instead of the deprecated system-UI flags (kept for Android 5-10); the lint findings are printed in the build log.
 - **Automatic tests** (`app/src/test/.../PrayerCalcTest.kt`, run on every build): Bahrain times must match the mosque display photo within 2 minutes; all 34 regions must give six valid, correctly ordered times on 4 dates of the year; Umm al-Qura Isha = Maghrib + 90 min; every region has an Arabic and an English name. A **lint** code check prints its report in the build log.
 - **The app's own font**: the app now ships the Tajawal font (Arabic + Latin, SIL Open Font License, `app/src/main/assets/fonts/`) so text looks the same on every device. Settings > Appearance > **App's own font** (on by default) can switch back to the device font.
 - **Fixed text size**: sizes are now in dp, so the device's "font size" setting no longer makes the app's text bigger or smaller (also in the home-screen widget). Settings > Appearance > **Follow device text size** turns the old behaviour back on. The in-app **Text size** setting (80-150 %) still works.

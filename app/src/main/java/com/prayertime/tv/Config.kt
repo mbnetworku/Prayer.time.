@@ -147,4 +147,20 @@ object Config {
         if (f != null) tv.typeface = f
         else if (bold) tv.setTypeface(tv.typeface, android.graphics.Typeface.BOLD)
     }
+
+    /** Full-screen: hides the status and navigation bars (swipe from the edge shows them briefly). */
+    @Suppress("DEPRECATION")
+    fun hideSystemBars(a: Activity) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            a.window.setDecorFitsSystemWindows(false)
+            a.window.insetsController?.let {
+                it.hide(android.view.WindowInsets.Type.systemBars())
+                it.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            a.window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        }
+    }
 }
