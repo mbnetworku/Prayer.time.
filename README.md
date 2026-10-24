@@ -12,3 +12,8 @@ Landscape prayer-times display: Arabic text, English (0-9) digits, adhan sound, 
 - **Adhan audio:** put your own file at `app/src/main/res/raw/adhan.mp3` (or .ogg/.wav). Without it a simple chime plays.
 - **Download the APK:** Releases page of this repo (newest build, built automatically on every push to master). A copy of Build 11 is also in the repo root: `PrayerTimeTV.apk`.
 - Install and build details: [docs/INSTALL.md](docs/INSTALL.md). Code overview: [docs/DESIGN.md](docs/DESIGN.md). History: [CHANGELOG.md](CHANGELOG.md).
+
+## Publishing on Google Play
+Everything prepared for the store is in `docs/` and `store/`: [PLAY_STORE.md](docs/PLAY_STORE.md) (checklist),
+[STORE_LISTING.md](docs/STORE_LISTING.md) (texts, declarations), [PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md),
+[RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md), [ASSETS_AND_LICENSES.md](docs/ASSETS_AND_LICENSES.md).

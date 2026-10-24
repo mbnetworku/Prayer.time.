@@ -3,6 +3,9 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Google Play preparation**: target/compile SDK 36 (Android Gradle Plugin 8.10.1, Gradle 8.11.1); new manual workflow **Release AAB (Google Play)** builds a signed App Bundle (+ test APK) from GitHub secrets (private artifacts, version number from the run number); the adhan recordings are left out of the store build unless ticked (licence safety); `raw_keep.txt` keeps `R.raw` present.
+- Docs: `docs/PLAY_STORE.md`, `STORE_LISTING.md` (Arabic + English texts, Data safety, permission declarations), `PRIVACY_POLICY.md` + `privacy.html` (bilingual), `RELEASE_SIGNING.md`, `ASSETS_AND_LICENSES.md`.
+- Store graphics in `store/`: 512×512 icon, 1024×500 feature graphic, 320×180 Android TV banner.
 - **Bilingual prayer notification**: at each prayer time the notification shows the prayer in Arabic and English with its time, e.g. title "الفجر  •  Fajr  —  04:24 ص", text "حان وقت صلاة الفجر / It's time for Fajr prayer", with a green accent. Same for the adhan playing notification (with Pause/Resume/Stop) and for the message-only notification when the sound is off.
 - **Performance / stability**: the home screen no longer rebuilds the glass row backgrounds every second (only when the next prayer changes), the message card re-reads settings only every 5 s and only rewrites text that changed, the progress bar only re-layouts when it moved, and wallpaper / list pictures are decoded once and cached (max 1920 px). A problem in a one-second update can no longer stop the clock or close the app.
 - **Adhan volume fix**: the adhan now plays on the **alarm volume** (Settings > Adhan > Play adhan on alarm volume, on by default), so it is heard even if media volume is 0 and it passes Do Not Disturb when alarms are allowed. Turn it off to use the media volume.
