@@ -20,6 +20,39 @@ object AdhanNotification {
     const val ACTION_RESUME = "com.prayertime.tv.ADHAN_RESUME"
     const val ACTION_STOP = "com.prayertime.tv.ADHAN_STOP"
 
+    private val namesAr = listOf("الفجر", "الشروق", "الظهر", "العصر", "المغرب", "العشاء")
+    private val namesEn = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+
+    /** Name of the prayer whose time just came (from the last adhan key "date-index"), or null. */
+    private fun prayerText(ctx: Context): String? {
+        val key = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getString("lastAdhanKey", "") ?: ""
+        val k = key.substringAfterLast('-').toIntOrNull() ?: return null
+        val ar = Locale.getDefault().language == "ar"
+        val n = (if (ar) namesAr else namesEn).getOrNull(k) ?: return null
+        return if (ar) "حان وقت صلاة $n" else "It's time for $n prayer"
+    }
+
+    /** A plain notification (message + default notification sound) for when the adhan sound is off. */
+    @Suppress("DEPRECATION")
+    fun remind(ctx: Context) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val ar = Locale.getDefault().language == "ar"
+        if (Build.VERSION.SDK_INT >= 26) {
+            nm.createNotificationChannel(NotificationChannel("reminder", if (ar) "تذكير بالصلاة" else "Prayer reminder",
+                NotificationManager.IMPORTANCE_DEFAULT))
+        }
+        val open = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), flags())
+        val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, "reminder") else Notification.Builder(ctx)
+        b.setSmallIcon(R.drawable.ic_stat_adhan)
+            .setContentTitle(if (ar) "مواقيت الصلاة" else "Prayer Times")
+            .setContentText(prayerText(ctx) ?: if (ar) "حان وقت الصلاة" else "It's prayer time")
+            .setAutoCancel(true)
+            .setContentIntent(open)
+        nm.notify(1002, b.build())
+    }
+
     private fun flags() = PendingIntent.FLAG_UPDATE_CURRENT or
         (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
 
@@ -48,8 +81,7 @@ object AdhanNotification {
             .setContentText(when {
                 paused && ar -> "متوقف مؤقتاً"
                 paused -> "Paused"
-                ar -> "يُرفع الأذان الآن"
-                else -> "Adhan is playing"
+                else -> prayerText(ctx) ?: if (ar) "يُرفع الأذان الآن" else "Adhan is playing"
             })
             .setOngoing(!paused)
             .setOnlyAlertOnce(true)

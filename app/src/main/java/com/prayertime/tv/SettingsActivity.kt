@@ -452,6 +452,9 @@ class SettingsActivity : Activity() {
         row(body, t("الأذان والتطبيق مغلق", "Adhan when the app is closed"),
             switchOf("bgAdhan", true) { AdhanScheduler.schedule(this) },
             t("يعمل في الخلفية وحتى مع إطفاء الشاشة", "Runs in the background, even with the screen off"))
+        row(body, t("إشعار وقت الصلاة", "Prayer-time notification"),
+            switchOf("prayerNote", true) { AdhanScheduler.schedule(this) },
+            t("رسالة باسم الصلاة عند دخول الوقت، حتى لو الصوت متوقف", "A message with the prayer name when the time comes, even if the sound is off"))
         if (!AdhanScheduler.exactAllowed(this) && Build.VERSION.SDK_INT >= 31) {
             action(body, t("السماح بالمنبهات الدقيقة (مطلوب للأذان في وقته)", "Allow exact alarms (needed for an on-time adhan)"), red) {
                 try { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:$packageName"))) }

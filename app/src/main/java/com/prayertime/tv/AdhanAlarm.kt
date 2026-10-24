@@ -56,7 +56,7 @@ object AdhanScheduler {
 
     fun enabled(ctx: Context): Boolean {
         val p = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
-        return p.getBoolean("bgAdhan", true) && p.getBoolean("sound", true)
+        return p.getBoolean("bgAdhan", true) && (p.getBoolean("sound", true) || p.getBoolean("prayerNote", true))
     }
 
     /** False only on Android 12+ when the user has turned off "Alarms & reminders" for the app. */
@@ -99,11 +99,15 @@ class AdhanAlarmReceiver : BroadcastReceiver() {
             val p = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE)
             val late = System.currentTimeMillis() - p.getLong("nextAdhanAt", 0) > 10 * 60_000 // device was off
             if (!late && Times.claim(ctx, p.getString("nextAdhanKey", "") ?: "")) {
-                val svc = Intent(ctx, AdhanService::class.java)
-                try {
-                    if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(svc) else ctx.startService(svc)
-                } catch (_: Exception) {
-                    AdhanPlayer.get(ctx).playSelected() // service not allowed: play directly
+                if (!p.getBoolean("sound", true)) {
+                    AdhanNotification.remind(ctx) // sound off: just a message notification
+                } else {
+                    val svc = Intent(ctx, AdhanService::class.java)
+                    try {
+                        if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(svc) else ctx.startService(svc)
+                    } catch (_: Exception) {
+                        AdhanPlayer.get(ctx).playSelected() // service not allowed: play directly
+                    }
                 }
             }
         }

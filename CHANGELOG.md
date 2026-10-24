@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- The adhan notification now names the prayer ("حان وقت صلاة الفجر" / "It's time for Fajr prayer").
+- **Prayer-time notification** (Settings > Adhan, on by default): when the adhan sound is switched off, a normal notification with the prayer name still appears at each prayer time. Works in the background like the adhan; turn it off to get no message either.
 - Fix overlapping on phones (portrait): the clock, next-prayer card, message and prayer list now take their natural height and the screen scrolls, instead of being squeezed on top of each other.
 - Readability over a photo: panels become dark frosted glass, text gets a soft shadow, the next-prayer card uses dark glass, and past prayers are less faded (70 %).
 - **Prayer list background**: Settings > Appearance > Prayer list background - choose your own picture shown inside the prayer-times panel (rounded, behind the names and times), with picture dimming (0-80 %) and a remove button. Independent of the full-screen wallpaper.
