@@ -38,9 +38,13 @@ class AdhanPlayer private constructor(private val ctx: Context) {
     var isPaused = false
         private set
 
-    private fun attributes() = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA)
-        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+    /** Alarm volume by default: audible even if media volume is 0 and allowed through Do Not Disturb "alarms". */
+    private fun attributes(): AudioAttributes {
+        val alarm = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getBoolean("azanAlarm", true)
+        return AudioAttributes.Builder()
+            .setUsage(if (alarm) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
+    }
 
     fun play(resName: String = "adhan") {
         stop()
@@ -48,8 +52,8 @@ class AdhanPlayer private constructor(private val ctx: Context) {
         val id = ctx.resources.getIdentifier(resName, "raw", ctx.packageName)
         if (id != 0) {
             try {
-                player = MediaPlayer.create(ctx, id)?.apply {
-                    setAudioAttributes(attributes())
+                // Attributes must be given at creation (MediaPlayer is already prepared afterwards).
+                player = MediaPlayer.create(ctx, id, attributes(), AudioManager.AUDIO_SESSION_ID_GENERATE)?.apply {
                     try { setWakeMode(ctx, PowerManager.PARTIAL_WAKE_LOCK) } catch (_: Exception) { }
                     setOnCompletionListener { stop() }
                     start()

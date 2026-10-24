@@ -452,6 +452,9 @@ class SettingsActivity : Activity() {
         row(body, t("الأذان والتطبيق مغلق", "Adhan when the app is closed"),
             switchOf("bgAdhan", true) { AdhanScheduler.schedule(this) },
             t("يعمل في الخلفية وحتى مع إطفاء الشاشة", "Runs in the background, even with the screen off"))
+        row(body, t("تشغيل الأذان بصوت المنبه", "Play adhan on alarm volume"), switchOf("azanAlarm", true),
+            t("يُسمع حتى لو صوت الوسائط صفر. اضبط صوت المنبه من إعدادات الجهاز",
+              "Audible even if media volume is 0. Set the alarm volume in the device settings"))
         row(body, t("إشعار وقت الصلاة", "Prayer-time notification"),
             switchOf("prayerNote", true) { AdhanScheduler.schedule(this) },
             t("رسالة باسم الصلاة عند دخول الوقت، حتى لو الصوت متوقف", "A message with the prayer name when the time comes, even if the sound is off"))

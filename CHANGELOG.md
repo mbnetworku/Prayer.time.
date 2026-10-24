@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **Adhan volume fix**: the adhan now plays on the **alarm volume** (Settings > Adhan > Play adhan on alarm volume, on by default), so it is heard even if media volume is 0 and it passes Do Not Disturb when alarms are allowed. Turn it off to use the media volume.
+- **Bug fix**: built-in adhan files now get their audio attributes at creation (setting them on an already prepared player could fail and fall back to the short beep on some devices).
 - The adhan notification now names the prayer ("حان وقت صلاة الفجر" / "It's time for Fajr prayer").
 - **Prayer-time notification** (Settings > Adhan, on by default): when the adhan sound is switched off, a normal notification with the prayer name still appears at each prayer time. Works in the background like the adhan; turn it off to get no message either.
 - Fix overlapping on phones (portrait): the clock, next-prayer card, message and prayer list now take their natural height and the screen scrolls, instead of being squeezed on top of each other.
