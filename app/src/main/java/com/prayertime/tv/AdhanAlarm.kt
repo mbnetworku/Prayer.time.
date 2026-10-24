@@ -37,6 +37,8 @@ object Times {
      * Each adhan plays once even if both the open screen and the background alarm reach it.
      * key = "date-prayerIndex"; returns true for the first caller.
      */
+    // commit() on purpose: the key must be on disk before the next caller (screen vs alarm process) checks it.
+    @android.annotation.SuppressLint("ApplySharedPref")
     @Synchronized fun claim(ctx: Context, key: String): Boolean {
         val p = prefs(ctx)
         if (key.isEmpty() || p.getString("lastAdhanKey", "") == key) return false
@@ -82,7 +84,7 @@ object AdhanScheduler {
                 ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).edit()
                     .putString("nextAdhanKey", "$d-$k").putLong("nextAdhanAt", millis).apply()
                 when {
-                    !exactAllowed(ctx) -> am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
+                    Build.VERSION.SDK_INT >= 23 && !exactAllowed(ctx) -> am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
                     Build.VERSION.SDK_INT >= 23 -> am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
                     else -> am.setExact(AlarmManager.RTC_WAKEUP, millis, pi)
                 }

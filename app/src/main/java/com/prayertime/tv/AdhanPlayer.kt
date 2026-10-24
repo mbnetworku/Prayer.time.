@@ -16,6 +16,8 @@ import android.os.SystemClock
  * Plays res/raw/adhan* or a file chosen by the user; falls back to a short chime.
  * While a recording plays, a notification offers Pause/Resume and Stop.
  */
+// Safe: only the application context is kept (no Activity), so nothing leaks.
+@android.annotation.SuppressLint("StaticFieldLeak")
 class AdhanPlayer private constructor(private val ctx: Context) {
     companion object {
         @Volatile private var instance: AdhanPlayer? = null
