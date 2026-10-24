@@ -3,3 +3,8 @@ build/
 local.properties
 *.iml
 .idea/
+
+# Google Play upload key - never commit
+upload*.jks
+*.keystore
+release.jks
