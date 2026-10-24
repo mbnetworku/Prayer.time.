@@ -114,8 +114,8 @@ class SettingsActivity : Activity() {
         if (selected) rounded(blue, 20) else rounded(Color.argb(30, 255, 255, 255), 20, Color.argb(40, 255, 255, 255)), 20)
 
     private fun text(s: String, size: Float, bold: Boolean = false, c: Int = Color.WHITE) = TextView(this).apply {
-        text = s; textSize = size; setTextColor(c)
-        if (bold) setTypeface(typeface, Typeface.BOLD)
+        text = s; setTextColor(c)
+        Config.style(this@SettingsActivity, this, size, bold)
     }
 
     private fun tappable(v: View, radiusDp: Int, normal: Drawable?, onClick: () -> Unit) {
@@ -132,6 +132,7 @@ class SettingsActivity : Activity() {
         }
 
     private fun input(hintText: String) = EditText(this).apply {
+        Config.font(this@SettingsActivity, false)?.let { typeface = it }
         hint = hintText; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
         background = rounded(Color.argb(30, 255, 255, 255), 10, Color.argb(50, 255, 255, 255))
         setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -495,6 +496,10 @@ class SettingsActivity : Activity() {
         row(body, t("الزجاج السائل", "Liquid glass"), switchOf("glass", true) { recreate() },
             t("بطاقات زجاجية شفافة", "Translucent glass cards"))
         row(body, t("تمويه صورة الخلفية", "Blur wallpaper"), switchOf("blurWall", true), t("أندرويد 12 وأحدث", "Android 12 and newer"))
+        row(body, t("خط التطبيق الخاص", "App's own font"), switchOf("appFont", true) { recreate() },
+            t("خط موحّد على كل الأجهزة", "The same font on every device"))
+        row(body, t("اتباع حجم خط الجهاز", "Follow device text size"), switchOf("systemTextSize", false) { recreate() },
+            t("مغلق = حجم ثابت لا يتأثر بإعداد الجهاز", "Off = fixed size, not affected by the device setting"))
         val scales = listOf(80, 90, 100, 110, 125, 150)
         choices(body, t("حجم الخط", "Text size"), scales.map { "$it%" }, if (portrait) 3 else 6,
             { scales.indexOf(prefs.getInt("fontScale", 100)).coerceAtLeast(0) }) { pos ->

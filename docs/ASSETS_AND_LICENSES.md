@@ -19,3 +19,9 @@ Everything else is original: the icon / banner artwork, the prayer-time calculat
 praytimes.org-style astronomical formulas written for this project), the code and the texts. The prayer-time formulas are
 not copyrightable; no third-party libraries are used (only Android's own libraries and the Google desugaring library
 `desugar_jdk_libs`, Apache-2.0).
+
+## Font
+`app/src/main/assets/fonts/Tajawal-Regular.ttf` and `Tajawal-Bold.ttf` — Tajawal by Boutros International,
+licensed under the **SIL Open Font License 1.1** (full text in `app/src/main/assets/fonts/OFL.txt`). The license allows
+bundling the font in an app, including commercially, as long as the license text ships with it (it does) and the font
+is not sold on its own.

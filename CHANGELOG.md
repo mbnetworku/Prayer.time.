@@ -3,6 +3,8 @@
 Every change to this project is recorded here.
 
 ## Unreleased
+- **The app's own font**: the app now ships the Tajawal font (Arabic + Latin, SIL Open Font License, `app/src/main/assets/fonts/`) so text looks the same on every device. Settings > Appearance > **App's own font** (on by default) can switch back to the device font.
+- **Fixed text size**: sizes are now in dp, so the device's "font size" setting no longer makes the app's text bigger or smaller (also in the home-screen widget). Settings > Appearance > **Follow device text size** turns the old behaviour back on. The in-app **Text size** setting (80-150 %) still works.
 - **Google Play preparation**: target/compile SDK 36 (Android Gradle Plugin 8.10.1, Gradle 8.11.1); new manual workflow **Release AAB (Google Play)** builds a signed App Bundle (+ test APK) from GitHub secrets (private artifacts, version number from the run number); the adhan recordings are left out of the store build unless ticked (licence safety); `raw_keep.txt` keeps `R.raw` present.
 - Docs: `docs/PLAY_STORE.md`, `STORE_LISTING.md` (Arabic + English texts, Data safety, permission declarations), `PRIVACY_POLICY.md` + `privacy.html` (bilingual), `RELEASE_SIGNING.md`, `ASSETS_AND_LICENSES.md`.
 - Store graphics in `store/`: 512×512 icon, 1024×500 feature graphic, 320×180 Android TV banner.

@@ -127,8 +127,8 @@ class MainActivity : Activity() {
     override fun onPause() { handler.removeCallbacks(ticker); super.onPause() }
 
     private fun tv(size: Float, bold: Boolean = false, c: Int = textColor) = TextView(this).apply {
-        setTextColor(c); textSize = size * prefs.getInt("fontScale", 100) / 100f * screenScale; gravity = Gravity.CENTER
-        if (bold) setTypeface(typeface, Typeface.BOLD)
+        setTextColor(c); gravity = Gravity.CENTER
+        Config.style(this@MainActivity, this, size * prefs.getInt("fontScale", 100) / 100f * screenScale, bold)
         // Soft shadow keeps text readable over a photo.
         if (Config.hasImage(this@MainActivity) || prefs.contains("listImage")) setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), Color.argb(200, 0, 0, 0))
     }

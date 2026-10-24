@@ -120,4 +120,31 @@ object Config {
                     else ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         }
     }
+
+    // ---- App font and text size ----------------------------------------------------------
+
+    private var regularFont: android.graphics.Typeface? = null
+    private var boldFont: android.graphics.Typeface? = null
+
+    /** The app's own font (Tajawal, SIL OFL) from assets/fonts, or null to use the device font (pref "appFont"). */
+    fun font(ctx: Context, bold: Boolean): android.graphics.Typeface? {
+        if (!ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getBoolean("appFont", true)) return null
+        try {
+            if (regularFont == null) regularFont = android.graphics.Typeface.createFromAsset(ctx.assets, "fonts/Tajawal-Regular.ttf")
+            if (boldFont == null) boldFont = android.graphics.Typeface.createFromAsset(ctx.assets, "fonts/Tajawal-Bold.ttf")
+        } catch (_: Throwable) { return null }
+        return if (bold) boldFont else regularFont
+    }
+
+    /**
+     * Applies the app font and size to a text view. Size is in dp, so it does NOT change with the device's
+     * font-size setting, unless the user turned on "Follow device text size" (pref "systemTextSize").
+     */
+    fun style(ctx: Context, tv: android.widget.TextView, size: Float, bold: Boolean) {
+        val followDevice = ctx.getSharedPreferences("prayer", Context.MODE_PRIVATE).getBoolean("systemTextSize", false)
+        tv.setTextSize(if (followDevice) android.util.TypedValue.COMPLEX_UNIT_SP else android.util.TypedValue.COMPLEX_UNIT_DIP, size)
+        val f = font(ctx, bold)
+        if (f != null) tv.typeface = f
+        else if (bold) tv.setTypeface(tv.typeface, android.graphics.Typeface.BOLD)
+    }
 }
