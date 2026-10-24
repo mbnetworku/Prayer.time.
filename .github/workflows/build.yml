@@ -13,6 +13,11 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.11.1" }
+      - name: Unit tests (prayer-time calculation vs the mosque display, all regions)
+        run: gradle testDebugUnitTest -PbuildNumber=${{ github.run_number }}
+      - name: Code check (lint) - report only
+        continue-on-error: true
+        run: gradle lintDebug -PbuildNumber=${{ github.run_number }}
       - run: gradle assembleDebug -PbuildNumber=${{ github.run_number }}
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk PrayerTimeTV.apk

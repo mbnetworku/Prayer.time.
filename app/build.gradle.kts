@@ -55,8 +55,17 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions { jvmTarget = "17" }
+
+    // Code check: prints a text report in the build log; does not stop the build.
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+        textReport = true
+        textOutput = file("stdout")
+    }
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
