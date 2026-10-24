@@ -91,6 +91,8 @@ class MainActivity : Activity() {
     private var today: List<ZonedDateTime?> = emptyList()
     private var tomorrowFajr: ZonedDateTime? = null
     private var tick = 0
+    private var lastNext = -2
+    private var lastPassedMask = -1
 
     private val region get() = Regions.all[prefs.getInt("region", 0).coerceIn(0, Regions.all.size - 1)]
     private val use24 get() = prefs.getBoolean("h24", false)
@@ -143,6 +145,7 @@ class MainActivity : Activity() {
     /** Home screen: top bar (city, dates, settings) + hero (clock, next-prayer card, message) + prayer list. */
     private fun buildUi(): View {
         nameViews.clear(); timeViews.clear(); rows.clear()
+        lastNext = -2; lastPassedMask = -1
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(20), dp(if (portrait) 28 else 14), dp(20), dp(14))
@@ -332,6 +335,12 @@ class MainActivity : Activity() {
 
     private val ticker = object : Runnable {
         override fun run() {
+            // A problem in one update must never stop the clock or close the app.
+            try { step() } catch (_: Exception) { }
+            handler.postDelayed(this, 1000)
+        }
+
+        private fun step() {
             val now = ZonedDateTime.now(ZoneId.of(region.zone))
             info.visibility = if (timesOnly) View.GONE else View.VISIBLE
             if (cachedDate != now.toLocalDate() || cachedRegion != prefs.getInt("region", 0)) load(now)
@@ -350,18 +359,26 @@ class MainActivity : Activity() {
                 val prev = today.filterNotNull().lastOrNull { !it.isAfter(now) } ?: now.toLocalDate().atStartOfDay(now.zone)
                 val total = Duration.between(prev, it).seconds.coerceAtLeast(1)
                 val done = (1f - s.toFloat() / total).coerceIn(0f, 1f)
-                (progFill.layoutParams as LinearLayout.LayoutParams).weight = done
-                (progRest.layoutParams as LinearLayout.LayoutParams).weight = 1f - done
-                progFill.requestLayout()
-            }
-            for (i in rows.indices) {
-                val passed = today.getOrNull(i)?.let { !it.isAfter(now) } ?: false
-                rows[i].background = when {
-                    i != next -> null
-                    glassOn -> if (Config.hasImage(this@MainActivity)) Config.glass(density, 18, null, true) else Config.glass(density, 18, highlightColor)
-                    else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(18).toFloat() }
+                val fillLp = progFill.layoutParams as LinearLayout.LayoutParams
+                if (Math.abs(fillLp.weight - done) > 0.002f) {
+                    fillLp.weight = done
+                    (progRest.layoutParams as LinearLayout.LayoutParams).weight = 1f - done
+                    progFill.requestLayout()
                 }
-                rows[i].alpha = if (passed && i != next) 0.7f else 1f
+            }
+            // Only touch the row backgrounds when something changed (not every second).
+            val passedMask = today.indices.fold(0) { m, i -> if (today[i]?.isAfter(now) == false) m or (1 shl i) else m }
+            if (next != lastNext || passedMask != lastPassedMask) {
+                lastNext = next; lastPassedMask = passedMask
+                for (i in rows.indices) {
+                    val passed = (passedMask shr i) and 1 == 1
+                    rows[i].background = when {
+                        i != next -> null
+                        glassOn -> if (Config.hasImage(this@MainActivity)) Config.glass(density, 18, null, true) else Config.glass(density, 18, highlightColor)
+                        else -> GradientDrawable().apply { setColor(highlightColor); cornerRadius = dp(18).toFloat() }
+                    }
+                    rows[i].alpha = if (passed && i != next) 0.7f else 1f
+                }
             }
 
             // Fire adhan (not for sunrise) within 30s after the exact time.
@@ -377,8 +394,7 @@ class MainActivity : Activity() {
                 }
             }
             tick++
-            updateTile()
-            handler.postDelayed(this, 1000)
+            if (tick % 5 == 0) updateTile() // rotation steps are multiples of 5 s; avoids re-reading prefs every second
         }
     }
 
@@ -398,14 +414,14 @@ class MainActivity : Activity() {
 
     /** Rotating message card ("live tile"): after-adhan dua for 5 minutes, otherwise built-in + user messages. */
     private fun updateTile() {
+        fun show(text: String) { if (verse.visibility != View.VISIBLE) verse.visibility = View.VISIBLE; if (verse.text.toString() != text) verse.text = text }
         if (prefs.getBoolean("tileAfterAdhan", true) && System.currentTimeMillis() - prefs.getLong("lastAdhanAt", 0) < 5 * 60_000) {
-            verse.visibility = View.VISIBLE; verse.text = afterAdhanDua; return
+            show(afterAdhanDua); return
         }
         val list = (if (prefs.getBoolean("tilesBuiltin", true)) verses else emptyList()) + Config.customTiles(prefs)
         if (list.isEmpty()) { verse.visibility = View.GONE; return }
-        verse.visibility = View.VISIBLE
         val every = prefs.getInt("tileSeconds", 30).coerceAtLeast(5)
-        verse.text = list[(tick / every) % list.size]
+        show(list[(tick / every) % list.size])
     }
 
     /** Re-creates the screen so changes made in settings show immediately. */

@@ -68,17 +68,21 @@ object Config {
         } catch (_: Exception) { /* image gone or unreadable: fall back to the plain colour */ }
     }
 
-    /** Loads a user image (content uri) into [iv], scaled down to at most ~2000 px wide. */
+    private val imageCache = android.util.LruCache<String, android.graphics.Bitmap>(2)
+
+    /** Loads a user image (content uri) into [iv], scaled down to ~1920 px wide; decoded once, then cached in memory. */
     fun loadImage(ctx: android.content.Context, uriString: String, iv: android.widget.ImageView) {
         try {
+            imageCache.get(uriString)?.let { iv.setImageBitmap(it); return }
             val uri = android.net.Uri.parse(uriString)
             val b = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             ctx.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, b) }
             var sample = 1
-            while (b.outWidth / sample > 2000) sample *= 2
+            while (b.outWidth / sample > 1920 || b.outHeight / sample > 1920) sample *= 2
             val o = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            ctx.contentResolver.openInputStream(uri)?.use { iv.setImageBitmap(android.graphics.BitmapFactory.decodeStream(it, null, o)) }
-        } catch (_: Exception) { }
+            val bmp = ctx.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, o) }
+            if (bmp != null) { imageCache.put(uriString, bmp); iv.setImageBitmap(bmp) }
+        } catch (_: Throwable) { /* unreadable image or out of memory: keep the plain background */ }
     }
 
 
